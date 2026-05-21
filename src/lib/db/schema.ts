@@ -1,7 +1,13 @@
-import { sqliteTable, text, integer, real } from "drizzle-orm/sqlite-core";
+import {
+  pgTable,
+  text,
+  integer,
+  boolean,
+  numeric,
+} from "drizzle-orm/pg-core";
 
 // ─── Leads ───────────────────────────────────────────────
-export const leads = sqliteTable("leads", {
+export const leads = pgTable("leads", {
   id: text("id").primaryKey(),
   companyName: text("company_name").notNull(),
   website: text("website"),
@@ -20,7 +26,7 @@ export const leads = sqliteTable("leads", {
 });
 
 // ─── Contacts ────────────────────────────────────────────
-export const contacts = sqliteTable("contacts", {
+export const contacts = pgTable("contacts", {
   id: text("id").primaryKey(),
   leadId: text("lead_id")
     .notNull()
@@ -28,15 +34,15 @@ export const contacts = sqliteTable("contacts", {
   fullName: text("full_name").notNull(),
   title: text("title"),
   email: text("email"),
-  emailVerified: integer("email_verified", { mode: "boolean" }).default(false),
+  emailVerified: boolean("email_verified").default(false),
   phone: text("phone"),
   linkedinUrl: text("linkedin_url"),
-  isDecisionMaker: integer("is_decision_maker", { mode: "boolean" }).default(false),
+  isDecisionMaker: boolean("is_decision_maker").default(false),
   createdAt: text("created_at").notNull(),
 });
 
 // ─── Lead Scores ─────────────────────────────────────────
-export const leadScores = sqliteTable("lead_scores", {
+export const leadScores = pgTable("lead_scores", {
   id: text("id").primaryKey(),
   leadId: text("lead_id")
     .notNull()
@@ -51,19 +57,19 @@ export const leadScores = sqliteTable("lead_scores", {
   fundingEvent: integer("funding_event").default(0),
   trafficScore: integer("traffic_score").default(0),
   emailVerified: integer("email_verified_score").default(0),
-  disqualified: integer("disqualified", { mode: "boolean" }).default(false),
+  disqualified: boolean("disqualified").default(false),
   disqualifyReason: text("disqualify_reason"),
   scoredAt: text("scored_at").notNull(),
 });
 
 // ─── Deals ───────────────────────────────────────────────
-export const deals = sqliteTable("deals", {
+export const deals = pgTable("deals", {
   id: text("id").primaryKey(),
   leadId: text("lead_id")
     .notNull()
     .references(() => leads.id, { onDelete: "cascade" }),
   stage: text("stage").notNull().default("new_lead"),
-  dealValue: real("deal_value").default(0),
+  dealValue: numeric("deal_value").default("0"),
   assignedRep: text("assigned_rep"),
   nextAction: text("next_action"),
   nextActionDate: text("next_action_date"),
@@ -74,7 +80,7 @@ export const deals = sqliteTable("deals", {
 });
 
 // ─── Activities ──────────────────────────────────────────
-export const activities = sqliteTable("activities", {
+export const activities = pgTable("activities", {
   id: text("id").primaryKey(),
   leadId: text("lead_id").references(() => leads.id, { onDelete: "set null" }),
   dealId: text("deal_id").references(() => deals.id, { onDelete: "set null" }),
@@ -85,7 +91,7 @@ export const activities = sqliteTable("activities", {
 });
 
 // ─── Scrape Jobs ─────────────────────────────────────────
-export const scrapeJobs = sqliteTable("scrape_jobs", {
+export const scrapeJobs = pgTable("scrape_jobs", {
   id: text("id").primaryKey(),
   source: text("source").notNull(), // 'google_maps'
   status: text("status").notNull().default("pending"), // 'pending', 'running', 'completed', 'failed'

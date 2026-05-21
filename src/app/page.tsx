@@ -19,6 +19,8 @@ import { ScoreDistributionChart } from "@/components/dashboard/score-distributio
 import { PipelineFunnelChart } from "@/components/dashboard/pipeline-funnel-chart";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 
+export const dynamic = "force-dynamic";
+
 function formatCurrency(value: number) {
   if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`;
   if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`;
@@ -27,51 +29,44 @@ function formatCurrency(value: number) {
 
 async function getDashboardData() {
   // Total leads
-  const totalLeads = db
+  const [totalLeads] = await db
     .select({ count: sql<number>`count(*)` })
-    .from(schema.leads)
-    .get();
+    .from(schema.leads);
 
   // Hot leads
-  const hotLeads = db
+  const [hotLeads] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.leadScores)
-    .where(eq(schema.leadScores.tier, "hot"))
-    .get();
+    .where(eq(schema.leadScores.tier, "hot"));
 
   // Pipeline value (active deals)
-  const pipelineValue = db
-    .select({ total: sql<number>`coalesce(sum(deal_value), 0)` })
+  const [pipelineValue] = await db
+    .select({ total: sql<number>`coalesce(sum(cast(deal_value as numeric)), 0)` })
     .from(schema.deals)
-    .where(sql`${schema.deals.stage} NOT IN ('closed_won', 'closed_lost')`)
-    .get();
+    .where(sql`${schema.deals.stage} NOT IN ('closed_won', 'closed_lost')`);
 
   // Deals closed this month
-  const closedThisMonth = db
+  const [closedThisMonth] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.deals)
     .where(
-      sql`${schema.deals.stage} = 'closed_won' AND ${schema.deals.closeDate} >= date('now', 'start of month')`
-    )
-    .get();
+      sql`${schema.deals.stage} = 'closed_won' AND ${schema.deals.closeDate} >= to_char(date_trunc('month', now()), 'YYYY-MM-DD')`
+    );
 
   // Avg deal size (closed won)
-  const avgDeal = db
-    .select({ avg: sql<number>`coalesce(avg(deal_value), 0)` })
+  const [avgDeal] = await db
+    .select({ avg: sql<number>`coalesce(avg(cast(deal_value as numeric)), 0)` })
     .from(schema.deals)
-    .where(eq(schema.deals.stage, "closed_won"))
-    .get();
+    .where(eq(schema.deals.stage, "closed_won"));
 
   // Conversion rate
-  const totalDeals = db
+  const [totalDeals] = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(schema.deals);
+  const [wonDeals] = await db
     .select({ count: sql<number>`count(*)` })
     .from(schema.deals)
-    .get();
-  const wonDeals = db
-    .select({ count: sql<number>`count(*)` })
-    .from(schema.deals)
-    .where(eq(schema.deals.stage, "closed_won"))
-    .get();
+    .where(eq(schema.deals.stage, "closed_won"));
 
   const conversionRate =
     totalDeals?.count && totalDeals.count > 0
@@ -79,7 +74,7 @@ async function getDashboardData() {
       : 0;
 
   // Recent activities
-  const activities = db
+  const activities = await db
     .select({
       id: schema.activities.id,
       type: schema.activities.type,
@@ -89,21 +84,19 @@ async function getDashboardData() {
     })
     .from(schema.activities)
     .orderBy(desc(schema.activities.createdAt))
-    .limit(20)
-    .all();
+    .limit(20);
 
   // Leads by source
-  const leadsBySource = db
+  const leadsBySource = await db
     .select({
       source: schema.leads.source,
       count: sql<number>`count(*)`,
     })
     .from(schema.leads)
-    .groupBy(schema.leads.source)
-    .all();
+    .groupBy(schema.leads.source);
 
   // Score distribution
-  const scoreDistribution = db
+  const scoreDistribution = await db
     .select({
       range: sql<string>`
         CASE 
@@ -124,18 +117,16 @@ async function getDashboardData() {
         WHEN total_score >= 60 AND total_score < 80 THEN '60-80'
         WHEN total_score >= 80 THEN '80-100'
       END`
-    )
-    .all();
+    );
 
   // Pipeline funnel
-  const pipelineFunnel = db
+  const pipelineFunnel = await db
     .select({
       stage: schema.deals.stage,
       count: sql<number>`count(*)`,
     })
     .from(schema.deals)
-    .groupBy(schema.deals.stage)
-    .all();
+    .groupBy(schema.deals.stage);
 
   return {
     kpis: {

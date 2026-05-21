@@ -9,28 +9,28 @@ export async function GET() {
   try {
     // Total leads
     const [{ count: totalLeads }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(leads);
 
     // Leads by tier
     const [{ count: hotLeads }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(leadScores)
       .where(eq(leadScores.tier, "hot"));
 
     const [{ count: warmLeads }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(leadScores)
       .where(eq(leadScores.tier, "warm"));
 
     const [{ count: coldLeads }] = await db
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`cast(count(*) as integer)` })
       .from(leadScores)
       .where(eq(leadScores.tier, "cold"));
 
     // Pipeline value (sum of all non-closed deal values)
     const [{ total: pipelineValue }] = await db
-      .select({ total: sql<number>`coalesce(sum(${deals.dealValue}), 0)` })
+      .select({ total: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)` })
       .from(deals)
       .where(
         sql`${deals.stage} NOT IN ('closed_won', 'closed_lost')`
@@ -40,31 +40,31 @@ export async function GET() {
     const firstOfMonth = new Date();
     firstOfMonth.setDate(1);
     firstOfMonth.setHours(0, 0, 0, 0);
-    const monthStart = firstOfMonth.toISOString();
+    const firstOfMonthStr = firstOfMonth.toISOString();
 
     const [closedThisMonth] = await db
       .select({
-        count: sql<number>`count(*)`,
-        value: sql<number>`coalesce(sum(${deals.dealValue}), 0)`,
+        count: sql<number>`cast(count(*) as integer)`,
+        value: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)`,
       })
       .from(deals)
       .where(
-        sql`${deals.stage} = 'closed_won' AND ${deals.closeDate} >= ${monthStart}`
+        sql`${deals.stage} = 'closed_won' AND ${deals.closeDate} >= ${firstOfMonthStr}`
       );
 
     // Total deals & closed won for conversion rate
     const [{ totalDeals }] = await db
-      .select({ totalDeals: sql<number>`count(*)` })
+      .select({ totalDeals: sql<number>`cast(count(*) as integer)` })
       .from(deals);
 
     const [{ closedWon }] = await db
-      .select({ closedWon: sql<number>`count(*)` })
+      .select({ closedWon: sql<number>`cast(count(*) as integer)` })
       .from(deals)
       .where(eq(deals.stage, "closed_won"));
 
     // Average deal size (closed won)
     const [{ avg: avgDealSize }] = await db
-      .select({ avg: sql<number>`coalesce(avg(${deals.dealValue}), 0)` })
+      .select({ avg: sql<number>`coalesce(cast(avg(cast(${deals.dealValue} as numeric)) as float), 0)` })
       .from(deals)
       .where(eq(deals.stage, "closed_won"));
 
@@ -74,7 +74,7 @@ export async function GET() {
     const leadsBySource = await db
       .select({
         source: leads.source,
-        count: sql<number>`count(*)`,
+        count: sql<number>`cast(count(*) as integer)`,
       })
       .from(leads)
       .groupBy(leads.source)
@@ -92,7 +92,7 @@ export async function GET() {
     const scoreDistribution = await Promise.all(
       scoreRanges.map(async ({ range, min, max }) => {
         const [{ count }] = await db
-          .select({ count: sql<number>`count(*)` })
+          .select({ count: sql<number>`cast(count(*) as integer)` })
           .from(leadScores)
           .where(
             max === 100
@@ -108,8 +108,8 @@ export async function GET() {
       PIPELINE_STAGES.map(async (stage) => {
         const [result] = await db
           .select({
-            count: sql<number>`count(*)`,
-            value: sql<number>`coalesce(sum(${deals.dealValue}), 0)`,
+            count: sql<number>`cast(count(*) as integer)`,
+            value: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)`,
           })
           .from(deals)
           .where(eq(deals.stage, stage));

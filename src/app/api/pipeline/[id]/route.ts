@@ -30,19 +30,19 @@ export async function PATCH(
       return NextResponse.json({ error: "Deal not found" }, { status: 404 });
     }
 
-    const now = new Date().toISOString();
+    const nowDate = new Date().toISOString();
     const updates: Record<string, any> = {
       stage,
-      updatedAt: now,
+      updatedAt: nowDate,
     };
 
     if (dealValue !== undefined) {
-      updates.dealValue = dealValue;
+      updates.dealValue = String(dealValue);
     }
 
     // If closing, set closeDate
     if (stage === "closed_won" || stage === "closed_lost") {
-      updates.closeDate = now;
+      updates.closeDate = nowDate;
     }
 
     await db.update(deals).set(updates).where(eq(deals.id, id));
@@ -59,7 +59,7 @@ export async function PATCH(
         newStage: stage,
         dealValue: dealValue ?? existing.dealValue,
       }),
-      createdAt: now,
+      createdAt: nowDate,
     });
 
     const [updated] = await db.select().from(deals).where(eq(deals.id, id));

@@ -1,21 +1,18 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import * as pg from "postgres";
+const postgres = (pg as any).default || pg;
+import { drizzle } from "drizzle-orm/postgres-js";
 import { ulid } from "ulid";
 import * as schema from "./schema";
 import { scoreLead } from "../scoring";
-import path from "path";
-import fs from "fs";
 
-const dbPath = path.join(process.cwd(), "data", "leadgen.db");
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  console.error("DATABASE_URL environment variable is required");
+  process.exit(1);
 }
 
-const sqlite = new Database(dbPath);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
-const db = drizzle(sqlite, { schema });
+const client = postgres(connectionString, { prepare: false });
+const db = drizzle(client, { schema });
 
 function now() {
   return new Date().toISOString();
@@ -324,7 +321,7 @@ async function seed() {
 
   // Create a scrape job for the google_maps leads
   const scrapeJobId = ulid();
-  db.insert(schema.scrapeJobs)
+  await db.insert(schema.scrapeJobs)
     .values({
       id: scrapeJobId,
       source: "google_maps",
@@ -337,8 +334,7 @@ async function seed() {
       startedAt: daysAgo(7),
       completedAt: daysAgo(7),
       createdAt: daysAgo(7),
-    })
-    .run();
+    });
 
   for (let i = 0; i < seedLeads.length; i++) {
     const lead = seedLeads[i];
@@ -350,7 +346,7 @@ async function seed() {
     const createdAt = daysAgo(30 - i); // Stagger creation dates
 
     // Insert lead
-    db.insert(schema.leads)
+    await db.insert(schema.leads)
       .values({
         id: leadId,
         ...lead,
@@ -358,15 +354,14 @@ async function seed() {
         confidenceScore: lead.website ? 75 + Math.floor(Math.random() * 25) : 30,
         createdAt,
         updatedAt: ts,
-      })
-      .run();
+      });
 
     // Insert contact
     const domain = lead.website
       ? lead.website.replace(/https?:\/\//, "").replace(/\/$/, "")
       : null;
     const emailLocal = contact.fullName.toLowerCase().replace(/\s+/g, ".").replace(/'/g, "");
-    db.insert(schema.contacts)
+    await db.insert(schema.contacts)
       .values({
         id: contactId,
         leadId,
@@ -378,8 +373,7 @@ async function seed() {
         linkedinUrl: `https://linkedin.com/in/${contact.fullName.toLowerCase().replace(/\s+/g, "-").replace(/'/g, "")}`,
         isDecisionMaker: contact.isDecisionMaker,
         createdAt,
-      })
-      .run();
+      });
 
     // Score the lead
     const scoreResult = scoreLead({
@@ -392,23 +386,22 @@ async function seed() {
       monthlyTraffic: lead.website ? Math.floor(Math.random() * 5000) : 0,
     });
 
-    db.insert(schema.leadScores)
+    await db.insert(schema.leadScores)
       .values({
         id: scoreId,
         leadId,
         ...scoreResult,
         scoredAt: ts,
-      })
-      .run();
+      });
 
     // Create deal
     const stage = stageAssignments[i];
-    db.insert(schema.deals)
+    await db.insert(schema.deals)
       .values({
         id: dealId,
         leadId,
         stage,
-        dealValue: dealValues[i],
+        dealValue: String(dealValues[i]),
         assignedRep: reps[i % reps.length],
         nextAction:
           stage === "new_lead"
@@ -440,8 +433,7 @@ async function seed() {
             : null,
         createdAt,
         updatedAt: ts,
-      })
-      .run();
+      });
 
     // Create some activities
     const activityTypes = [
@@ -469,7 +461,7 @@ async function seed() {
     }
 
     for (const act of activityTypes) {
-      db.insert(schema.activities)
+      await db.insert(schema.activities)
         .values({
           id: ulid(),
           leadId,
@@ -478,8 +470,7 @@ async function seed() {
           description: act.description,
           metadata: JSON.stringify({ rep: reps[i % reps.length] }),
           createdAt: daysAgo(Math.floor(Math.random() * 20)),
-        })
-        .run();
+        });
     }
 
     const tierEmoji = scoreResult.tier === "hot" ? "🔥" : scoreResult.tier === "warm" ? "🟡" : "🔵";
@@ -489,7 +480,13 @@ async function seed() {
   }
 
   console.log(`\n✅ Seeded ${seedLeads.length} leads with contacts, scores, deals, and activities.`);
+
+  // Close the connection
+  await client.end();
   process.exit(0);
 }
 
-seed().catch(console.error);
+seed().catch((err) => {
+  console.error(err);
+  client.end().then(() => process.exit(1));
+});

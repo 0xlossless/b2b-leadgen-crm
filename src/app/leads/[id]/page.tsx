@@ -35,47 +35,44 @@ import { EmailComposer } from "@/components/leads/email-composer";
 import { AiSummary } from "@/components/leads/ai-summary";
 import { formatDistanceToNow, format } from "date-fns";
 
-export default function LeadProfilePage({
+export const dynamic = "force-dynamic";
+
+export default async function LeadProfilePage({
   params,
 }: {
   params: { id: string };
 }) {
   // Fetch lead
-  const lead = db
+  const [lead] = await db
     .select()
     .from(leads)
-    .where(eq(leads.id, params.id))
-    .get();
+    .where(eq(leads.id, params.id));
 
   if (!lead) {
     notFound();
   }
 
   // Fetch related data
-  const leadContacts = db
+  const leadContacts = await db
     .select()
     .from(contacts)
-    .where(eq(contacts.leadId, lead.id))
-    .all();
+    .where(eq(contacts.leadId, lead.id));
 
-  const score = db
+  const [score] = await db
     .select()
     .from(leadScores)
-    .where(eq(leadScores.leadId, lead.id))
-    .get();
+    .where(eq(leadScores.leadId, lead.id));
 
-  const deal = db
+  const [deal] = await db
     .select()
     .from(deals)
-    .where(eq(deals.leadId, lead.id))
-    .get();
+    .where(eq(deals.leadId, lead.id));
 
-  const leadActivities = db
+  const leadActivities = await db
     .select()
     .from(activities)
     .where(eq(activities.leadId, lead.id))
-    .orderBy(desc(activities.createdAt))
-    .all();
+    .orderBy(desc(activities.createdAt));
 
   // Parse tech stack
   let techStack: string[] = [];
@@ -376,7 +373,7 @@ export default function LeadProfilePage({
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-zinc-500">Value</span>
                     <span className="text-lg font-bold text-emerald-400">
-                      ${(deal.dealValue ?? 0).toLocaleString()}
+                      ${(parseFloat(deal.dealValue ?? "0") || 0).toLocaleString()}
                     </span>
                   </div>
                   <Separator className="bg-zinc-800" />

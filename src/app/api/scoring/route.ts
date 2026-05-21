@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     );
 
     const results: any[] = [];
-    const now = new Date().toISOString();
+    const nowDate = new Date().toISOString();
 
     for (const lead of leadsToScore) {
       const leadContacts = contactsByLead[lead.id] ?? [];
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
             emailVerified: scoreResult.emailVerified,
             disqualified: scoreResult.disqualified,
             disqualifyReason: scoreResult.disqualifyReason,
-            scoredAt: now,
+            scoredAt: nowDate,
           })
           .where(eq(leadScores.id, existingScore.id));
       } else {
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           emailVerified: scoreResult.emailVerified,
           disqualified: scoreResult.disqualified,
           disqualifyReason: scoreResult.disqualifyReason,
-          scoredAt: now,
+          scoredAt: nowDate,
         });
       }
 
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
         type: "score_update",
         description: `Score updated: ${scoreResult.totalScore}/100 (${scoreResult.tier})`,
         metadata: JSON.stringify(scoreResult),
-        createdAt: now,
+        createdAt: nowDate,
       });
 
       results.push({

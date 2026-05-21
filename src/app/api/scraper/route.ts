@@ -7,11 +7,10 @@ import { scoreLead } from "@/lib/scoring";
 // GET /api/scraper - List all scrape jobs
 export async function GET() {
   try {
-    const jobs = db
+    const jobs = await db
       .select()
       .from(schema.scrapeJobs)
-      .orderBy(desc(schema.scrapeJobs.createdAt))
-      .all();
+      .orderBy(desc(schema.scrapeJobs.createdAt));
     return NextResponse.json({ jobs });
   } catch (error) {
     return NextResponse.json({ error: "Failed to fetch jobs" }, { status: 500 });
@@ -39,10 +38,10 @@ export async function POST(req: Request) {
     const { query = "businesses", location = "California", maxResults = 5 } = body;
 
     const jobId = ulid();
-    const now = new Date().toISOString();
+    const nowDate = new Date().toISOString();
 
     // Create the scrape job
-    db.insert(schema.scrapeJobs)
+    await db.insert(schema.scrapeJobs)
       .values({
         id: jobId,
         source: "google_maps",
@@ -52,10 +51,9 @@ export async function POST(req: Request) {
         recordsNew: 0,
         recordsDuplicate: 0,
         errors: 0,
-        startedAt: now,
-        createdAt: now,
-      })
-      .run();
+        startedAt: nowDate,
+        createdAt: nowDate,
+      });
 
     // Simulate scraping by picking random businesses
     const shuffled = [...SIMULATED_BUSINESSES].sort(() => Math.random() - 0.5);
@@ -66,11 +64,11 @@ export async function POST(req: Request) {
 
     for (const biz of results) {
       // Check for duplicate by company name
-      const existing = db
+      const [existing] = await db
         .select()
         .from(schema.leads)
         .where(eq(schema.leads.companyName, biz.name))
-        .get();
+        .limit(1);
 
       if (existing) {
         dupCount++;
@@ -83,7 +81,7 @@ export async function POST(req: Request) {
       const dealId = ulid();
 
       // Create lead
-      db.insert(schema.leads)
+      await db.insert(schema.leads)
         .values({
           id: leadId,
           companyName: biz.name,
@@ -98,17 +96,16 @@ export async function POST(req: Request) {
           source: "google_maps",
           scrapeJobId: jobId,
           confidenceScore: 60 + Math.floor(Math.random() * 30),
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        });
 
       // Create a contact
       const contactNames = ["Alex Rivera", "Jordan Lee", "Morgan Chen", "Casey Davis", "Taylor Kim"];
       const contactName = contactNames[Math.floor(Math.random() * contactNames.length)];
       const domain = `${biz.name.toLowerCase().replace(/\s+/g, "").replace(/[^a-z0-9]/g, "")}.com`;
 
-      db.insert(schema.contacts)
+      await db.insert(schema.contacts)
         .values({
           id: contactId,
           leadId,
@@ -118,9 +115,8 @@ export async function POST(req: Request) {
           emailVerified: Math.random() > 0.5,
           phone: `(${415 + Math.floor(Math.random() * 10)}) ${100 + Math.floor(Math.random() * 900)}-${1000 + Math.floor(Math.random() * 9000)}`,
           isDecisionMaker: true,
-          createdAt: now,
-        })
-        .run();
+          createdAt: nowDate,
+        });
 
       // Score the lead
       const scoreResult = scoreLead({
@@ -133,46 +129,43 @@ export async function POST(req: Request) {
         monthlyTraffic: Math.floor(Math.random() * 15000),
       });
 
-      db.insert(schema.leadScores)
+      await db.insert(schema.leadScores)
         .values({
           id: scoreId,
           leadId,
           ...scoreResult,
-          scoredAt: now,
-        })
-        .run();
+          scoredAt: nowDate,
+        });
 
       // Create a deal in new_lead stage
-      db.insert(schema.deals)
+      await db.insert(schema.deals)
         .values({
           id: dealId,
           leadId,
           stage: "new_lead",
-          dealValue: 0,
+          dealValue: "0",
           assignedRep: "Unassigned",
           nextAction: "Initial outreach",
-          createdAt: now,
-          updatedAt: now,
-        })
-        .run();
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        });
 
       // Log activity
-      db.insert(schema.activities)
+      await db.insert(schema.activities)
         .values({
           id: ulid(),
           leadId,
           type: "scrape",
           description: `Scraped from Google Maps: "${query}" in ${location}`,
           metadata: JSON.stringify({ jobId, source: "google_maps" }),
-          createdAt: now,
-        })
-        .run();
+          createdAt: nowDate,
+        });
 
       newCount++;
     }
 
     // Update job as completed
-    db.update(schema.scrapeJobs)
+    await db.update(schema.scrapeJobs)
       .set({
         status: "completed",
         recordsFound: results.length,
@@ -180,8 +173,7 @@ export async function POST(req: Request) {
         recordsDuplicate: dupCount,
         completedAt: new Date().toISOString(),
       })
-      .where(eq(schema.scrapeJobs.id, jobId))
-      .run();
+      .where(eq(schema.scrapeJobs.id, jobId));
 
     return NextResponse.json({
       job: {

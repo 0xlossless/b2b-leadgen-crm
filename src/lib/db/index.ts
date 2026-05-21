@@ -1,20 +1,15 @@
-import Database from "better-sqlite3";
-import { drizzle } from "drizzle-orm/better-sqlite3";
+import postgres from "postgres";
+import { drizzle } from "drizzle-orm/postgres-js";
 import * as schema from "./schema";
-import path from "path";
-import fs from "fs";
 
-const dbPath = path.join(process.cwd(), "data", "leadgen.db");
+const connectionString = process.env.DATABASE_URL!;
 
-// Ensure data directory exists
-const dataDir = path.dirname(dbPath);
-if (!fs.existsSync(dataDir)) {
-  fs.mkdirSync(dataDir, { recursive: true });
-}
+// For serverless (Vercel), use max 1 connection
+const client = postgres(connectionString, {
+  max: 1,
+  idle_timeout: 20,
+  connect_timeout: 10,
+});
 
-const sqlite = new Database(dbPath);
-sqlite.pragma("journal_mode = WAL");
-sqlite.pragma("foreign_keys = ON");
-
-export const db = drizzle(sqlite, { schema });
+export const db = drizzle(client, { schema });
 export { schema };

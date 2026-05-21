@@ -21,19 +21,21 @@ import { SourceAttributionChart } from "@/components/analytics/source-attributio
 import { PipelineValueChart } from "@/components/analytics/pipeline-value-chart";
 import { MonthlyDealsChart } from "@/components/analytics/monthly-deals-chart";
 
-function getAnalyticsData() {
+export const dynamic = "force-dynamic";
+
+async function getAnalyticsData() {
   // Total deals
-  const allDeals = db.select().from(deals).all();
+  const allDeals = await db.select().from(deals);
   const totalDeals = allDeals.length;
 
-  // Deals by stage
+  // Deals by stage (parse dealValue as number since numeric returns string)
   const dealsByStage = PIPELINE_STAGES.map((stage) => {
     const stageDeals = allDeals.filter((d) => d.stage === stage);
     return {
       stage,
       label: STAGE_LABELS[stage],
       count: stageDeals.length,
-      totalValue: stageDeals.reduce((sum, d) => sum + (d.dealValue ?? 0), 0),
+      totalValue: stageDeals.reduce((sum, d) => sum + (parseFloat(d.dealValue ?? "0") || 0), 0),
     };
   });
 
@@ -65,10 +67,10 @@ function getAnalyticsData() {
     (d) => d.stage !== "closed_won" && d.stage !== "closed_lost"
   );
   const totalPipelineValue = activeDeals.reduce(
-    (s, d) => s + (d.dealValue ?? 0),
+    (s, d) => s + (parseFloat(d.dealValue ?? "0") || 0),
     0
   );
-  const wonValue = wonDeals.reduce((s, d) => s + (d.dealValue ?? 0), 0);
+  const wonValue = wonDeals.reduce((s, d) => s + (parseFloat(d.dealValue ?? "0") || 0), 0);
   const winRate =
     wonDeals.length + lostDeals.length > 0
       ? Math.round(
@@ -81,14 +83,13 @@ function getAnalyticsData() {
       : 0;
 
   // Source attribution
-  const allLeads = db
+  const allLeads = await db
     .select({
       source: leads.source,
       totalScore: leadScores.totalScore,
     })
     .from(leads)
-    .leftJoin(leadScores, eq(leadScores.leadId, leads.id))
-    .all();
+    .leftJoin(leadScores, eq(leadScores.leadId, leads.id));
 
   const sourceMap = new Map<string, { totalScore: number; count: number }>();
   for (const lead of allLeads) {
@@ -123,7 +124,7 @@ function getAnalyticsData() {
     const lostInMonth = lostDeals.filter((_, i) => i % months.length === idx).length;
     const valueInMonth = wonDeals
       .filter((_, i) => i % months.length === idx)
-      .reduce((s, d) => s + (d.dealValue ?? 0), 0);
+      .reduce((s, d) => s + (parseFloat(d.dealValue ?? "0") || 0), 0);
     return {
       month,
       won: wonInMonth,
@@ -148,8 +149,8 @@ function getAnalyticsData() {
   };
 }
 
-export default function AnalyticsPage() {
-  const data = getAnalyticsData();
+export default async function AnalyticsPage() {
+  const data = await getAnalyticsData();
 
   const kpis = [
     {

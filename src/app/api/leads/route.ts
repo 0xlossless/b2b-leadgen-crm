@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
 
     // Count total
     const [{ count: total }] = await db
-      .select({ count: sql<number>`count(distinct ${leads.id})` })
+      .select({ count: sql<number>`cast(count(distinct ${leads.id}) as integer)` })
       .from(leads)
       .leftJoin(contacts, eq(contacts.leadId, leads.id))
       .leftJoin(leadScores, eq(leadScores.leadId, leads.id))
@@ -169,12 +169,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date().toISOString();
+    const nowDate = new Date().toISOString();
     const newLead = {
       id: ulid(),
       ...parsed.data,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: nowDate,
+      updatedAt: nowDate,
     };
 
     await db.insert(leads).values(newLead);
@@ -184,9 +184,9 @@ export async function POST(request: NextRequest) {
       id: ulid(),
       leadId: newLead.id,
       stage: "new_lead",
-      dealValue: 0,
-      createdAt: now,
-      updatedAt: now,
+      dealValue: "0",
+      createdAt: nowDate,
+      updatedAt: nowDate,
     };
     await db.insert(deals).values(newDeal);
 
