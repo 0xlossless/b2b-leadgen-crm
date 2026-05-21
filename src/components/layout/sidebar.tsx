@@ -29,12 +29,14 @@ import {
   Menu,
   ChevronLeft,
   ChevronRight,
+  Mail,
 } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Leads", href: "/leads", icon: Users },
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
+  { label: "Outreach", href: "/outreach", icon: Mail },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Scraper", href: "/scraper", icon: Search },
 ] as const;
@@ -43,6 +45,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/": "Dashboard",
   "/leads": "Leads",
   "/pipeline": "Pipeline",
+  "/outreach": "Outreach",
   "/analytics": "Analytics",
   "/scraper": "Scraper",
 };
