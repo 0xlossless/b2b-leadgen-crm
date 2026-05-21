@@ -314,14 +314,20 @@ Golden State Epoxy Flooring
 
 // Map database industry values to template keys
 const INDUSTRY_MAP: Record<string, string> = {
+  // Database values
+  "Automotive": "auto_repair",
+  "Commercial": "warehouse", // catch-all for commercial/industrial
+  "Fitness": "gym_fitness",
+  "Restaurant": "restaurant",
+  "Real Estate": "property_management",
+  "Storage": "warehouse",
+  "Winery": "brewery_winery",
+  "Brewery": "brewery_winery",
+  // Alternate names
   "Auto Body & Repair": "auto_repair",
   "Auto Repair & Service": "auto_repair",
-  "Restaurant": "restaurant",
   "Restaurants & Dining": "restaurant",
   "Gym & Fitness": "gym_fitness",
-  "Fitness": "gym_fitness",
-  "Brewery": "brewery_winery",
-  "Winery": "brewery_winery",
   "Brewery & Winery": "brewery_winery",
   "Property Management": "property_management",
   "Manufacturing": "manufacturing",
