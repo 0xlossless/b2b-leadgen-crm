@@ -89,8 +89,8 @@ export function EmailComposer({ leadId, companyName }: EmailComposerProps) {
         throw new Error(data.error || "Failed to generate email");
       }
 
-      setSubject(data.email.subject);
-      setBody(data.email.body);
+      setSubject(data.subject);
+      setBody(data.body);
       setGenerated(true);
     } catch (err) {
       setError(
