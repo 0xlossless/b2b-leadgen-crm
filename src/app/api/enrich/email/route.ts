@@ -24,38 +24,38 @@ const IGNORE_DOMAINS = new Set([
   "cloudfront.net", "amazonaws.com", "jquery.com", "bootstrapcdn.com",
   "google.com", "yahoo.com", "hotmail.com", "outlook.com",
   "aol.com", "icloud.com", "mail.com", "protonmail.com",
-  "yandex.com", "zoho.com",
+  "yandex.com", "zoho.com", "user.com", "domain.com",
 ]);
 
-// Patterns for junk/automated addresses
 const JUNK_PREFIXES = new Set([
   "noreply", "no-reply", "donotreply", "do-not-reply",
-  "mailer-daemon", "postmaster", "webmaster", "admin@",
-  "abuse", "hostmaster", "support@wix", "wordpress@",
-  "root", "daemon",
+  "mailer-daemon", "postmaster", "webmaster",
+  "abuse", "hostmaster", "root", "daemon",
+  "wordpress", "wix",
 ]);
 
 function isValidBusinessEmail(email: string): boolean {
   const lower = email.toLowerCase();
   const domain = lower.split("@")[1];
-  
   if (!domain) return false;
   if (IGNORE_DOMAINS.has(domain)) return false;
   if (JUNK_PREFIXES.has(lower.split("@")[0])) return false;
   if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".svg")) return false;
+  if (lower.endsWith(".gif") || lower.endsWith(".webp") || lower.endsWith(".css")) return false;
+  if (lower.endsWith(".js") || lower.endsWith(".woff") || lower.endsWith(".woff2")) return false;
   if (lower.includes("..") || lower.startsWith(".") || lower.startsWith("-")) return false;
   if (domain.split(".").length < 2) return false;
-  
+  // Ignore emails with version numbers (like 1.2.3@domain.com)
+  if (/\d+\.\d+\.\d+/.test(lower)) return false;
   return true;
 }
 
-// Score emails: prefer info@, contact@, hello@ for businesses
 function scoreEmail(email: string): number {
   const prefix = email.toLowerCase().split("@")[0];
   if (prefix === "info" || prefix === "contact" || prefix === "hello") return 100;
   if (prefix === "sales" || prefix === "inquiries" || prefix === "inquiry") return 90;
   if (prefix === "office" || prefix === "front" || prefix === "reception") return 80;
-  if (prefix.includes(".") || prefix.includes("_")) return 70; // likely first.last
+  if (prefix.includes(".") || prefix.includes("_")) return 70;
   if (prefix === "general" || prefix === "team" || prefix === "mail") return 60;
   if (prefix === "support" || prefix === "help" || prefix === "service") return 40;
   return 50;
@@ -66,37 +66,35 @@ async function crawlForEmails(website: string): Promise<{ emails: string[]; page
   const allEmails = new Set<string>();
   let pagesChecked = 0;
 
-  // Normalize URL
   let baseUrl = website.trim();
   if (!baseUrl.startsWith("http")) baseUrl = "https://" + baseUrl;
   try { new URL(baseUrl); } catch { return { emails: [], pagesChecked: 0 }; }
 
-  // Pages to check — homepage + common contact/about pages
-  const pagePaths = [
-    "/",
-    "/contact",
-    "/contact-us",
-    "/about",
-    "/about-us",
-  ];
+  // Pages to check
+  const pagePaths = ["/", "/contact", "/contact-us", "/about", "/about-us"];
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 15000); // 15s max per site
+  for (const path of pagePaths) {
+    try {
+      const url = new URL(path, baseUrl).toString();
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000); // 8s per page
 
-  try {
-    for (const path of pagePaths) {
       try {
-        const url = new URL(path, baseUrl).toString();
         const res = await fetch(url, {
           signal: controller.signal,
           headers: {
-            "User-Agent": "Mozilla/5.0 (compatible; LeadEnricher/1.0; +https://goldenstateepoxy.com)",
-            "Accept": "text/html",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.5",
           },
           redirect: "follow",
         });
 
+        clearTimeout(timeout);
         if (!res.ok) continue;
+
+        const contentType = res.headers.get("content-type") || "";
+        if (!contentType.includes("text/html") && !contentType.includes("application/xhtml")) continue;
 
         const html = await res.text();
         pagesChecked++;
@@ -109,27 +107,31 @@ async function crawlForEmails(website: string): Promise<{ emails: string[]; page
           }
         }
 
-        // Also check mailto: links explicitly
+        // Also check mailto: links
         const mailtoRegex = /mailto:([a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/gi;
         let match;
         while ((match = mailtoRegex.exec(html)) !== null) {
           const email = match[1].toLowerCase();
-          if (isValidBusinessEmail(email)) {
-            allEmails.add(email);
-          }
+          if (isValidBusinessEmail(email)) allEmails.add(email);
         }
 
-        // If we found emails, no need to check more pages
+        // Decode HTML entities that might hide emails  
+        const decoded = html.replace(/&#(\d+);/g, (_, c) => String.fromCharCode(parseInt(c)));
+        const decodedFound = decoded.match(EMAIL_REGEX) || [];
+        for (const email of decodedFound) {
+          if (isValidBusinessEmail(email)) allEmails.add(email.toLowerCase());
+        }
+
         if (allEmails.size >= 3) break;
       } catch {
+        clearTimeout(timeout);
         continue;
       }
+    } catch {
+      continue;
     }
-  } finally {
-    clearTimeout(timeout);
   }
 
-  // Sort by score — best emails first
   const sorted = Array.from(allEmails).sort((a, b) => scoreEmail(b) - scoreEmail(a));
   return { emails: sorted, pagesChecked };
 }
@@ -139,7 +141,6 @@ export async function GET() {
   try {
     const supabase = getSupabase();
 
-    // Count leads with and without emails
     const { data: allLeads } = await supabase.from("leads").select("id, website");
     const { data: allContacts } = await supabase.from("contacts").select("lead_id, email, email_verified");
 
@@ -175,7 +176,7 @@ export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase();
     const body = await request.json().catch(() => ({}));
-    const batchSize = Math.min(body.batchSize || 50, 100);
+    const batchSize = Math.min(body.batchSize || 20, 50);
     const nowDate = new Date().toISOString();
 
     // Get leads that have a website but no email in contacts
@@ -192,16 +193,18 @@ export async function POST(request: NextRequest) {
     });
 
     const batch = needsEmail.slice(0, batchSize);
-    
+
     if (batch.length === 0) {
       return NextResponse.json({
         message: "All leads with websites already have emails",
         enriched: 0,
-        total: leadsWithWeb?.length || 0,
+        processed: 0,
+        remaining: 0,
+        results: [],
       });
     }
 
-    // Process batch
+    // Process in parallel chunks of 3 (conservative for reliability)
     const results: Array<{
       leadId: string;
       company: string;
@@ -210,9 +213,8 @@ export async function POST(request: NextRequest) {
       status: "found" | "not_found" | "error";
     }> = [];
 
-    // Process in parallel batches of 5 to respect rate limits
-    for (let i = 0; i < batch.length; i += 5) {
-      const chunk = batch.slice(i, i + 5);
+    for (let i = 0; i < batch.length; i += 3) {
+      const chunk = batch.slice(i, i + 3);
       const chunkResults = await Promise.allSettled(
         chunk.map(async (lead) => {
           try {
@@ -249,7 +251,6 @@ export async function POST(request: NextRequest) {
       const bestEmail = result.emails[0];
       enrichedCount++;
 
-      // Check if lead has existing contact
       const { data: existingContacts } = await supabase
         .from("contacts")
         .select("id")
@@ -257,16 +258,11 @@ export async function POST(request: NextRequest) {
         .limit(1);
 
       if (existingContacts && existingContacts.length > 0) {
-        // Update existing contact
         await supabase
           .from("contacts")
-          .update({
-            email: bestEmail,
-            email_verified: true,
-          })
+          .update({ email: bestEmail, email_verified: true })
           .eq("id", existingContacts[0].id);
       } else {
-        // Create new contact
         await supabase.from("contacts").insert({
           id: ulid(),
           lead_id: result.leadId,
@@ -278,7 +274,7 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Update lead score email_verified field
+      // Update lead score
       const { data: existingScore } = await supabase
         .from("lead_scores")
         .select("id, total_score")
