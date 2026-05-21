@@ -4,6 +4,8 @@ import { leads, leadScores, deals, activities } from "@/lib/db/schema";
 import { eq, sql, desc } from "drizzle-orm";
 import { PIPELINE_STAGES } from "@/lib/db/schema";
 
+export const dynamic = "force-dynamic";
+
 // ─── GET /api/analytics ─────────────────────────────────
 export async function GET() {
   try {

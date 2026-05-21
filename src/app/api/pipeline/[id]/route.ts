@@ -4,6 +4,8 @@ import { deals, activities, PIPELINE_STAGES } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { ulid } from "ulid";
 
+export const dynamic = "force-dynamic";
+
 // ─── PATCH /api/pipeline/[id] ────────────────────────────
 export async function PATCH(
   request: NextRequest,

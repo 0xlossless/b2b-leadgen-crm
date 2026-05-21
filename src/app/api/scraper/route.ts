@@ -4,6 +4,8 @@ import { desc, eq } from "drizzle-orm";
 import { ulid } from "ulid";
 import { scoreLead } from "@/lib/scoring";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/scraper - List all scrape jobs
 export async function GET() {
   try {

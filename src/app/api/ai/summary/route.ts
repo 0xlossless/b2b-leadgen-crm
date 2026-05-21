@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { leads, contacts, leadScores, deals } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 const LLM_URL = "http://localhost:8080/v1/chat/completions";
 const LLM_MODEL = "Qwen3.6-27B-Q4_K_M.gguf";
 

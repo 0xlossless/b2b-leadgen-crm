@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { leads, contacts, leadScores, deals, activities } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 // ─── GET /api/leads/[id] ─────────────────────────────────
 export async function GET(
   _request: NextRequest,

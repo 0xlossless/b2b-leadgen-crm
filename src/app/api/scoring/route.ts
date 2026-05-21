@@ -5,6 +5,8 @@ import { eq, or } from "drizzle-orm";
 import { scoreLead, type LeadData } from "@/lib/scoring";
 import { ulid } from "ulid";
 
+export const dynamic = "force-dynamic";
+
 // ─── POST /api/scoring ──────────────────────────────────
 export async function POST(request: NextRequest) {
   try {

@@ -3,6 +3,8 @@ import { db } from "@/lib/db";
 import { deals, leads, contacts, leadScores, PIPELINE_STAGES } from "@/lib/db/schema";
 import { eq, or } from "drizzle-orm";
 
+export const dynamic = "force-dynamic";
+
 // ─── GET /api/pipeline ───────────────────────────────────
 export async function GET() {
   try {

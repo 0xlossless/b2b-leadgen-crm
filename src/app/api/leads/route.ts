@@ -5,6 +5,8 @@ import { eq, and, like, desc, asc, sql, or } from "drizzle-orm";
 import { ulid } from "ulid";
 import { z } from "zod/v4";
 
+export const dynamic = "force-dynamic";
+
 // ─── GET /api/leads ──────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
