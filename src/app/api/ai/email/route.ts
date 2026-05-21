@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { renderEmail, getAvailableIndustries, INDUSTRY_MAP } from "@/lib/email-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -7,17 +8,49 @@ function getSupabase() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 }
 
+function ulid() {
+  const t = Date.now().toString(36).toUpperCase().padStart(10, '0');
+  const r = Array.from({length:16}, () => '0123456789ABCDEFGHJKMNPQRSTVWXYZ'[Math.floor(Math.random()*32)]).join('');
+  return t + r;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const supabase = getSupabase();
-    const { leadId } = await request.json();
+    const { leadId, variant = "initial" } = await request.json();
 
     const { data: lead } = await supabase.from("leads").select("*, contacts(*), deals(*)").eq("id", leadId).single();
     if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
 
     const contact = lead.contacts?.[0];
     const deal = lead.deals?.[0];
+    const industry = lead.industry || "";
+    const emailVariant = variant === "followup" ? "followup" : "initial";
 
+    // Try industry-specific template first
+    const rendered = renderEmail(industry, emailVariant as "initial" | "followup", {
+      company_name: lead.company_name || "your company",
+      contact_name: contact?.full_name || "there",
+      city: lead.city || "the Bay Area",
+    });
+
+    if (rendered) {
+      return NextResponse.json({
+        subject: rendered.subject,
+        body: rendered.body,
+        to: contact?.email || "",
+        phone: contact?.phone || "",
+        contactName: contact?.full_name || "",
+        companyName: lead.company_name,
+        industry: industry,
+        variant: emailVariant,
+        dealValue: deal?.deal_value ?? 0,
+        templateUsed: INDUSTRY_MAP[industry] || industry,
+        availableIndustries: getAvailableIndustries(),
+      });
+    }
+
+    // Fallback generic template
     const subject = `Golden State Epoxy — Premium Flooring for ${lead.company_name}`;
     const body = `Hi ${contact?.full_name || "there"},
 
@@ -41,9 +74,14 @@ Golden State Epoxy Flooring
       subject,
       body,
       to: contact?.email || "",
+      phone: contact?.phone || "",
       contactName: contact?.full_name || "",
       companyName: lead.company_name,
+      industry: industry,
+      variant: "generic",
       dealValue: deal?.deal_value ?? 0,
+      templateUsed: "generic",
+      availableIndustries: getAvailableIndustries(),
     });
   } catch (error) {
     console.error("POST /api/ai/email error:", error);
