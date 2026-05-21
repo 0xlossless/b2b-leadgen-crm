@@ -1,76 +1,50 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { deals, activities, PIPELINE_STAGES } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { createClient } from "@supabase/supabase-js";
 import { ulid } from "ulid";
 
 export const dynamic = "force-dynamic";
 
-// ─── PATCH /api/pipeline/[id] ────────────────────────────
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
+export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const { id } = params;
+    const supabase = getSupabase();
     const body = await request.json();
     const { stage, dealValue } = body;
-
-    if (!stage || !PIPELINE_STAGES.includes(stage)) {
-      return NextResponse.json(
-        {
-          error: "Invalid stage",
-          validStages: PIPELINE_STAGES,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Find existing deal
-    const [existing] = await db.select().from(deals).where(eq(deals.id, id));
-    if (!existing) {
-      return NextResponse.json({ error: "Deal not found" }, { status: 404 });
-    }
-
     const nowDate = new Date().toISOString();
-    const updates: Record<string, any> = {
-      stage,
-      updatedAt: nowDate,
-    };
 
-    if (dealValue !== undefined) {
-      updates.dealValue = String(dealValue);
+    const updates: Record<string, any> = { updated_at: nowDate };
+    if (stage) updates.stage = stage;
+    if (dealValue !== undefined) updates.deal_value = String(dealValue);
+    if (body.nextAction !== undefined) updates.next_action = body.nextAction;
+    if (body.nextActionDate !== undefined) updates.next_action_date = body.nextActionDate;
+    if (body.assignedRep !== undefined) updates.assigned_rep = body.assignedRep;
+    if (body.winLossReason !== undefined) updates.win_loss_reason = body.winLossReason;
+    if (stage === "closed_won" || stage === "closed_lost") updates.close_date = nowDate;
+
+    const { data: deal, error } = await supabase.from("deals").update(updates).eq("id", params.id).select().single();
+    if (error) throw error;
+
+    // Log activity
+    if (stage) {
+      await supabase.from("activities").insert({
+        id: ulid(),
+        lead_id: deal.lead_id,
+        deal_id: deal.id,
+        type: "stage_change",
+        description: `Deal moved to ${stage.replace(/_/g, " ")}`,
+        created_at: nowDate,
+      });
     }
 
-    // If closing, set closeDate
-    if (stage === "closed_won" || stage === "closed_lost") {
-      updates.closeDate = nowDate;
-    }
-
-    await db.update(deals).set(updates).where(eq(deals.id, id));
-
-    // Log activity for the stage change
-    await db.insert(activities).values({
-      id: ulid(),
-      leadId: existing.leadId,
-      dealId: id,
-      type: "stage_change",
-      description: `Deal moved from "${existing.stage}" to "${stage}"`,
-      metadata: JSON.stringify({
-        previousStage: existing.stage,
-        newStage: stage,
-        dealValue: dealValue ?? existing.dealValue,
-      }),
-      createdAt: nowDate,
-    });
-
-    const [updated] = await db.select().from(deals).where(eq(deals.id, id));
-    return NextResponse.json(updated);
+    return NextResponse.json(deal);
   } catch (error) {
     console.error("PATCH /api/pipeline/[id] error:", error);
-    return NextResponse.json(
-      { error: "Failed to update deal" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to update deal" }, { status: 500 });
   }
 }

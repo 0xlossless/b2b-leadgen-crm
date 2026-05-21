@@ -1,134 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { leads, contacts, leadScores, activities } from "@/lib/db/schema";
-import { eq, or } from "drizzle-orm";
-import { scoreLead, type LeadData } from "@/lib/scoring";
+import { createClient } from "@supabase/supabase-js";
 import { ulid } from "ulid";
+import { scoreLead } from "@/lib/scoring";
 
 export const dynamic = "force-dynamic";
 
-// ─── POST /api/scoring ──────────────────────────────────
+function getSupabase() {
+  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json().catch(() => ({}));
-    const { leadIds } = body as { leadIds?: string[] };
-
-    // Fetch leads to score
-    let leadsToScore;
-    if (leadIds && leadIds.length > 0) {
-      leadsToScore = await db
-        .select()
-        .from(leads)
-        .where(or(...leadIds.map((id) => eq(leads.id, id))));
-    } else {
-      leadsToScore = await db.select().from(leads);
-    }
-
-    if (leadsToScore.length === 0) {
-      return NextResponse.json({ scored: 0, results: [] });
-    }
-
-    // Get all contacts for these leads to check for decision makers & verified emails
-    const allLeadIds = leadsToScore.map((l) => l.id);
-    const allContacts = await db
-      .select()
-      .from(contacts)
-      .where(or(...allLeadIds.map((id) => eq(contacts.leadId, id))));
-
-    const contactsByLead = allContacts.reduce<Record<string, typeof allContacts>>(
-      (acc, c) => {
-        (acc[c.leadId] ??= []).push(c);
-        return acc;
-      },
-      {}
-    );
-
-    const results: any[] = [];
+    const supabase = getSupabase();
+    const body = await request.json();
+    const { leadId, all } = body;
     const nowDate = new Date().toISOString();
 
-    for (const lead of leadsToScore) {
-      const leadContacts = contactsByLead[lead.id] ?? [];
-      const hasDecisionMaker = leadContacts.some((c) => c.isDecisionMaker);
-      const hasVerifiedEmail = leadContacts.some((c) => c.emailVerified);
+    let leadIds: string[] = [];
+    if (all) {
+      const { data } = await supabase.from("leads").select("id");
+      leadIds = (data || []).map(l => l.id);
+    } else if (leadId) {
+      leadIds = [leadId];
+    }
 
-      const data: LeadData = {
+    const results = [];
+    for (const id of leadIds) {
+      const { data: lead } = await supabase.from("leads").select("*").eq("id", id).single();
+      if (!lead) continue;
+
+      const { data: contacts } = await supabase.from("contacts").select("*").eq("lead_id", id);
+      const contact = contacts?.[0];
+
+      const scoreResult = scoreLead({
         industry: lead.industry,
-        employeeCount: lead.employeeCount,
-        techStack: lead.techStack,
-        hasDecisionMaker,
-        hasVerifiedEmail,
+        employeeCount: lead.employee_count,
+        hasDecisionMaker: contact?.is_decision_maker ?? false,
+        techStack: lead.tech_stack,
+        hasVerifiedEmail: contact?.email_verified ?? false,
         hasFundingEvent: false,
         monthlyTraffic: 0,
-      };
+      });
 
-      const scoreResult = scoreLead(data);
-
-      // Upsert lead score
-      const [existingScore] = await db
-        .select()
-        .from(leadScores)
-        .where(eq(leadScores.leadId, lead.id));
-
-      if (existingScore) {
-        await db
-          .update(leadScores)
-          .set({
-            totalScore: scoreResult.totalScore,
-            tier: scoreResult.tier,
-            industryMatch: scoreResult.industryMatch,
-            employeeFit: scoreResult.employeeFit,
-            decisionMaker: scoreResult.decisionMaker,
-            techMatch: scoreResult.techMatch,
-            fundingEvent: scoreResult.fundingEvent,
-            trafficScore: scoreResult.trafficScore,
-            emailVerified: scoreResult.emailVerified,
-            disqualified: scoreResult.disqualified,
-            disqualifyReason: scoreResult.disqualifyReason,
-            scoredAt: nowDate,
-          })
-          .where(eq(leadScores.id, existingScore.id));
+      // Upsert score
+      const { data: existing } = await supabase.from("lead_scores").select("id").eq("lead_id", id).single();
+      if (existing) {
+        await supabase.from("lead_scores").update({ ...scoreResult, scored_at: nowDate }).eq("lead_id", id);
       } else {
-        await db.insert(leadScores).values({
-          id: ulid(),
-          leadId: lead.id,
-          totalScore: scoreResult.totalScore,
-          tier: scoreResult.tier,
-          industryMatch: scoreResult.industryMatch,
-          employeeFit: scoreResult.employeeFit,
-          decisionMaker: scoreResult.decisionMaker,
-          techMatch: scoreResult.techMatch,
-          fundingEvent: scoreResult.fundingEvent,
-          trafficScore: scoreResult.trafficScore,
-          emailVerified: scoreResult.emailVerified,
-          disqualified: scoreResult.disqualified,
-          disqualifyReason: scoreResult.disqualifyReason,
-          scoredAt: nowDate,
-        });
+        await supabase.from("lead_scores").insert({ id: ulid(), lead_id: id, ...scoreResult, scored_at: nowDate });
       }
 
-      // Log score activity
-      await db.insert(activities).values({
-        id: ulid(),
-        leadId: lead.id,
-        type: "score_update",
-        description: `Score updated: ${scoreResult.totalScore}/100 (${scoreResult.tier})`,
-        metadata: JSON.stringify(scoreResult),
-        createdAt: nowDate,
-      });
-
-      results.push({
-        leadId: lead.id,
-        companyName: lead.companyName,
-        ...scoreResult,
-      });
+      results.push({ leadId: id, ...scoreResult });
     }
 
     return NextResponse.json({ scored: results.length, results });
   } catch (error) {
     console.error("POST /api/scoring error:", error);
-    return NextResponse.json(
-      { error: "Failed to score leads" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to score leads" }, { status: 500 });
   }
 }

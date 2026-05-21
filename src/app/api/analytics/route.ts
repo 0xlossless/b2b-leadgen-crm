@@ -1,160 +1,78 @@
 import { NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { leads, leadScores, deals, activities } from "@/lib/db/schema";
-import { eq, sql, desc } from "drizzle-orm";
-import { PIPELINE_STAGES } from "@/lib/db/schema";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-// ─── GET /api/analytics ─────────────────────────────────
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
 export async function GET() {
   try {
-    // Total leads
-    const [{ count: totalLeads }] = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(leads);
+    const supabase = getSupabase();
 
-    // Leads by tier
-    const [{ count: hotLeads }] = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(leadScores)
-      .where(eq(leadScores.tier, "hot"));
+    const { count: totalLeads } = await supabase.from("leads").select("*", { count: "exact", head: true });
+    const { data: allDeals } = await supabase.from("deals").select("*");
+    const deals = allDeals || [];
 
-    const [{ count: warmLeads }] = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(leadScores)
-      .where(eq(leadScores.tier, "warm"));
+    const activeDeals = deals.filter(d => d.stage !== "closed_won" && d.stage !== "closed_lost");
+    const pipelineValue = activeDeals.reduce((s, d) => s + (parseFloat(d.deal_value || "0") || 0), 0);
 
-    const [{ count: coldLeads }] = await db
-      .select({ count: sql<number>`cast(count(*) as integer)` })
-      .from(leadScores)
-      .where(eq(leadScores.tier, "cold"));
-
-    // Pipeline value (sum of all non-closed deal values)
-    const [{ total: pipelineValue }] = await db
-      .select({ total: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)` })
-      .from(deals)
-      .where(
-        sql`${deals.stage} NOT IN ('closed_won', 'closed_lost')`
-      );
-
-    // Deals closed this month
     const firstOfMonth = new Date();
     firstOfMonth.setDate(1);
     firstOfMonth.setHours(0, 0, 0, 0);
-    const firstOfMonthStr = firstOfMonth.toISOString();
+    const closedThisMonth = deals.filter(d => d.stage === "closed_won" && d.close_date && d.close_date >= firstOfMonth.toISOString());
+    const closedValue = closedThisMonth.reduce((s, d) => s + (parseFloat(d.deal_value || "0") || 0), 0);
 
-    const [closedThisMonth] = await db
-      .select({
-        count: sql<number>`cast(count(*) as integer)`,
-        value: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)`,
-      })
-      .from(deals)
-      .where(
-        sql`${deals.stage} = 'closed_won' AND ${deals.closeDate} >= ${firstOfMonthStr}`
-      );
+    const wonDeals = deals.filter(d => d.stage === "closed_won");
+    const lostDeals = deals.filter(d => d.stage === "closed_lost");
+    const conversionRate = (wonDeals.length + lostDeals.length) > 0
+      ? Math.round((wonDeals.length / (wonDeals.length + lostDeals.length)) * 100)
+      : 0;
 
-    // Total deals & closed won for conversion rate
-    const [{ totalDeals }] = await db
-      .select({ totalDeals: sql<number>`cast(count(*) as integer)` })
-      .from(deals);
+    const avgDealSize = wonDeals.length > 0
+      ? Math.round(wonDeals.reduce((s, d) => s + (parseFloat(d.deal_value || "0") || 0), 0) / wonDeals.length)
+      : 0;
 
-    const [{ closedWon }] = await db
-      .select({ closedWon: sql<number>`cast(count(*) as integer)` })
-      .from(deals)
-      .where(eq(deals.stage, "closed_won"));
+    // Pipeline by stage
+    const stageData: Record<string, { count: number; value: number }> = {};
+    deals.forEach(d => {
+      if (!stageData[d.stage]) stageData[d.stage] = { count: 0, value: 0 };
+      stageData[d.stage].count++;
+      stageData[d.stage].value += parseFloat(d.deal_value || "0") || 0;
+    });
 
-    // Average deal size (closed won)
-    const [{ avg: avgDealSize }] = await db
-      .select({ avg: sql<number>`coalesce(cast(avg(cast(${deals.dealValue} as numeric)) as float), 0)` })
-      .from(deals)
-      .where(eq(deals.stage, "closed_won"));
-
-    const conversionRate = totalDeals > 0 ? closedWon / totalDeals : 0;
-
-    // Leads by source
-    const leadsBySource = await db
-      .select({
-        source: leads.source,
-        count: sql<number>`cast(count(*) as integer)`,
-      })
-      .from(leads)
-      .groupBy(leads.source)
-      .orderBy(sql`count(*) desc`);
-
-    // Score distribution (0-20, 20-40, 40-60, 60-80, 80-100)
-    const scoreRanges = [
-      { range: "0-20", min: 0, max: 20 },
-      { range: "20-40", min: 20, max: 40 },
-      { range: "40-60", min: 40, max: 60 },
-      { range: "60-80", min: 60, max: 80 },
-      { range: "80-100", min: 80, max: 100 },
-    ];
-
-    const scoreDistribution = await Promise.all(
-      scoreRanges.map(async ({ range, min, max }) => {
-        const [{ count }] = await db
-          .select({ count: sql<number>`cast(count(*) as integer)` })
-          .from(leadScores)
-          .where(
-            max === 100
-              ? sql`${leadScores.totalScore} >= ${min} AND ${leadScores.totalScore} <= ${max}`
-              : sql`${leadScores.totalScore} >= ${min} AND ${leadScores.totalScore} < ${max}`
-          );
-        return { range, count };
-      })
-    );
-
-    // Pipeline funnel
-    const pipelineFunnel = await Promise.all(
-      PIPELINE_STAGES.map(async (stage) => {
-        const [result] = await db
-          .select({
-            count: sql<number>`cast(count(*) as integer)`,
-            value: sql<number>`coalesce(cast(sum(cast(${deals.dealValue} as numeric)) as float), 0)`,
-          })
-          .from(deals)
-          .where(eq(deals.stage, stage));
-        return { stage, count: result.count, value: result.value };
-      })
-    );
-
-    // Recent activities (last 20 with lead company name)
-    const recentActivities = await db
-      .select({
-        activity: activities,
-        companyName: leads.companyName,
-      })
-      .from(activities)
-      .leftJoin(leads, eq(leads.id, activities.leadId))
-      .orderBy(desc(activities.createdAt))
-      .limit(20);
+    // Source attribution
+    const { data: leadsWithScores } = await supabase.from("leads").select("source, lead_scores(total_score)");
+    const sourceMap = new Map<string, { totalScore: number; count: number }>();
+    (leadsWithScores || []).forEach(l => {
+      const curr = sourceMap.get(l.source) ?? { totalScore: 0, count: 0 };
+      curr.totalScore += l.lead_scores?.[0]?.total_score ?? 0;
+      curr.count++;
+      sourceMap.set(l.source, curr);
+    });
+    const sourceAttribution = Array.from(sourceMap.entries()).map(([source, { totalScore, count }]) => ({
+      source,
+      avgScore: count > 0 ? Math.round(totalScore / count) : 0,
+      leadCount: count,
+    }));
 
     return NextResponse.json({
-      totalLeads,
-      hotLeads,
-      warmLeads,
-      coldLeads,
+      totalLeads: totalLeads || 0,
+      totalDeals: deals.length,
       pipelineValue,
-      dealsClosedThisMonth: {
-        count: closedThisMonth.count,
-        value: closedThisMonth.value,
-      },
-      avgDealSize: Math.round(avgDealSize * 100) / 100,
-      conversionRate: Math.round(conversionRate * 10000) / 10000,
-      leadsBySource,
-      scoreDistribution,
-      pipelineFunnel,
-      recentActivities: recentActivities.map((r) => ({
-        ...r.activity,
-        companyName: r.companyName,
-      })),
+      closedThisMonth: closedThisMonth.length,
+      closedValue,
+      conversionRate,
+      avgDealSize,
+      stageData,
+      sourceAttribution,
     });
   } catch (error) {
     console.error("GET /api/analytics error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch analytics" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to fetch analytics" }, { status: 500 });
   }
 }

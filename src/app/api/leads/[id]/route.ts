@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { leads, contacts, leadScores, deals, activities } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { supabase } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -13,39 +11,112 @@ export async function GET(
   try {
     const { id } = params;
 
-    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
-    if (!lead) {
+    const { data: lead, error: leadError } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (leadError || !lead) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    const leadContacts = await db
-      .select()
-      .from(contacts)
-      .where(eq(contacts.leadId, id));
+    const { data: contactsData } = await supabase
+      .from("contacts")
+      .select("*")
+      .eq("lead_id", id);
 
-    const [score] = await db
-      .select()
-      .from(leadScores)
-      .where(eq(leadScores.leadId, id));
+    const { data: scoreData } = await supabase
+      .from("lead_scores")
+      .select("*")
+      .eq("lead_id", id)
+      .single();
 
-    const leadDeals = await db
-      .select()
-      .from(deals)
-      .where(eq(deals.leadId, id));
+    const { data: dealsData } = await supabase
+      .from("deals")
+      .select("*")
+      .eq("lead_id", id);
 
-    const recentActivities = await db
-      .select()
-      .from(activities)
-      .where(eq(activities.leadId, id))
-      .orderBy(desc(activities.createdAt))
+    const { data: activitiesData } = await supabase
+      .from("activities")
+      .select("*")
+      .eq("lead_id", id)
+      .order("created_at", { ascending: false })
       .limit(20);
 
+    // Map to camelCase for API response
+    const leadResult = {
+      id: lead.id,
+      companyName: lead.company_name,
+      website: lead.website,
+      industry: lead.industry,
+      employeeCount: lead.employee_count,
+      revenueRange: lead.revenue_range,
+      city: lead.city,
+      state: lead.state,
+      country: lead.country,
+      techStack: lead.tech_stack,
+      source: lead.source,
+      scrapeJobId: lead.scrape_job_id,
+      confidenceScore: lead.confidence_score,
+      createdAt: lead.created_at,
+      updatedAt: lead.updated_at,
+    };
+
     return NextResponse.json({
-      ...lead,
-      contacts: leadContacts,
-      score: score ?? null,
-      deals: leadDeals,
-      activities: recentActivities,
+      ...leadResult,
+      contacts: (contactsData ?? []).map((c) => ({
+        id: c.id,
+        leadId: c.lead_id,
+        fullName: c.full_name,
+        title: c.title,
+        email: c.email,
+        emailVerified: c.email_verified,
+        phone: c.phone,
+        linkedinUrl: c.linkedin_url,
+        isDecisionMaker: c.is_decision_maker,
+        createdAt: c.created_at,
+      })),
+      score: scoreData
+        ? {
+            id: scoreData.id,
+            leadId: scoreData.lead_id,
+            totalScore: scoreData.total_score,
+            tier: scoreData.tier,
+            industryMatch: scoreData.industry_match,
+            employeeFit: scoreData.employee_fit,
+            decisionMaker: scoreData.decision_maker,
+            techMatch: scoreData.tech_match,
+            fundingEvent: scoreData.funding_event,
+            trafficScore: scoreData.traffic_score,
+            emailVerified: scoreData.email_verified_score,
+            disqualified: scoreData.disqualified,
+            disqualifyReason: scoreData.disqualify_reason,
+            scoredAt: scoreData.scored_at,
+          }
+        : null,
+      deals: (dealsData ?? []).map((d) => ({
+        id: d.id,
+        leadId: d.lead_id,
+        stage: d.stage,
+        dealValue: d.deal_value,
+        assignedRep: d.assigned_rep,
+        nextAction: d.next_action,
+        nextActionDate: d.next_action_date,
+        closeDate: d.close_date,
+        winLossReason: d.win_loss_reason,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+      })),
+      activities: (activitiesData ?? []).map((a) => ({
+        id: a.id,
+        leadId: a.lead_id,
+        dealId: a.deal_id,
+        type: a.type,
+        description: a.description,
+        metadata: a.metadata,
+        createdAt: a.created_at,
+      })),
     });
   } catch (error) {
     console.error("GET /api/leads/[id] error:", error);
@@ -66,30 +137,35 @@ export async function PATCH(
     const body = await request.json();
 
     // Check lead exists
-    const [existing] = await db.select().from(leads).where(eq(leads.id, id));
-    if (!existing) {
+    const { data: existing, error: existError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (existError || !existing) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
-    // Only update allowed fields
-    const allowedFields = [
-      "companyName",
-      "website",
-      "industry",
-      "employeeCount",
-      "revenueRange",
-      "city",
-      "state",
-      "country",
-      "techStack",
-      "source",
-      "confidenceScore",
-    ] as const;
+    // Map camelCase input to snake_case DB columns
+    const fieldMap: Record<string, string> = {
+      companyName: "company_name",
+      website: "website",
+      industry: "industry",
+      employeeCount: "employee_count",
+      revenueRange: "revenue_range",
+      city: "city",
+      state: "state",
+      country: "country",
+      techStack: "tech_stack",
+      source: "source",
+      confidenceScore: "confidence_score",
+    };
 
     const updates: Record<string, any> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        updates[field] = body[field];
+    for (const [camelKey, snakeKey] of Object.entries(fieldMap)) {
+      if (body[camelKey] !== undefined) {
+        updates[snakeKey] = body[camelKey];
       }
     }
 
@@ -100,12 +176,48 @@ export async function PATCH(
       );
     }
 
-    updates.updatedAt = new Date().toISOString();
+    updates.updated_at = new Date().toISOString();
 
-    await db.update(leads).set(updates).where(eq(leads.id, id));
+    const { error: updateError } = await supabase
+      .from("leads")
+      .update(updates)
+      .eq("id", id);
 
-    const [updated] = await db.select().from(leads).where(eq(leads.id, id));
-    return NextResponse.json(updated);
+    if (updateError) {
+      console.error("Update error:", updateError);
+      return NextResponse.json(
+        { error: "Failed to update lead" },
+        { status: 500 }
+      );
+    }
+
+    const { data: updated } = await supabase
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (!updated) {
+      return NextResponse.json({ error: "Lead not found after update" }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      id: updated.id,
+      companyName: updated.company_name,
+      website: updated.website,
+      industry: updated.industry,
+      employeeCount: updated.employee_count,
+      revenueRange: updated.revenue_range,
+      city: updated.city,
+      state: updated.state,
+      country: updated.country,
+      techStack: updated.tech_stack,
+      source: updated.source,
+      scrapeJobId: updated.scrape_job_id,
+      confidenceScore: updated.confidence_score,
+      createdAt: updated.created_at,
+      updatedAt: updated.updated_at,
+    });
   } catch (error) {
     console.error("PATCH /api/leads/[id] error:", error);
     return NextResponse.json(
@@ -123,17 +235,22 @@ export async function DELETE(
   try {
     const { id } = params;
 
-    const [existing] = await db.select().from(leads).where(eq(leads.id, id));
-    if (!existing) {
+    const { data: existing, error: existError } = await supabase
+      .from("leads")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (existError || !existing) {
       return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     }
 
     // Cascade deletes are handled by FK constraints, but let's be explicit
-    await db.delete(activities).where(eq(activities.leadId, id));
-    await db.delete(deals).where(eq(deals.leadId, id));
-    await db.delete(leadScores).where(eq(leadScores.leadId, id));
-    await db.delete(contacts).where(eq(contacts.leadId, id));
-    await db.delete(leads).where(eq(leads.id, id));
+    await supabase.from("activities").delete().eq("lead_id", id);
+    await supabase.from("deals").delete().eq("lead_id", id);
+    await supabase.from("lead_scores").delete().eq("lead_id", id);
+    await supabase.from("contacts").delete().eq("lead_id", id);
+    await supabase.from("leads").delete().eq("id", id);
 
     return NextResponse.json({ success: true, deletedId: id });
   } catch (error) {

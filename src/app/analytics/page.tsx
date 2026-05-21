@@ -1,11 +1,9 @@
-import { db } from "@/lib/db";
-import { deals, leads, leadScores } from "@/lib/db/schema";
+import { supabase } from "@/lib/db";
 import {
   PIPELINE_STAGES,
   STAGE_LABELS,
   type PipelineStage,
 } from "@/lib/db/schema";
-import { eq, sql, count, avg } from "drizzle-orm";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   TrendingUp,
@@ -25,7 +23,8 @@ export const dynamic = "force-dynamic";
 
 async function getAnalyticsData() {
   // Total deals
-  const allDeals = await db.select().from(deals);
+  const { data: allDealsData } = await supabase.from("deals").select("*");
+  const allDeals = allDealsData ?? [];
   const totalDeals = allDeals.length;
 
   // Deals by stage (parse dealValue as number since numeric returns string)
@@ -35,7 +34,7 @@ async function getAnalyticsData() {
       stage,
       label: STAGE_LABELS[stage],
       count: stageDeals.length,
-      totalValue: stageDeals.reduce((sum, d) => sum + (parseFloat(d.dealValue ?? "0") || 0), 0),
+      totalValue: stageDeals.reduce((sum, d) => sum + (parseFloat(d.deal_value ?? "0") || 0), 0),
     };
   });
 
@@ -67,10 +66,10 @@ async function getAnalyticsData() {
     (d) => d.stage !== "closed_won" && d.stage !== "closed_lost"
   );
   const totalPipelineValue = activeDeals.reduce(
-    (s, d) => s + (parseFloat(d.dealValue ?? "0") || 0),
+    (s, d) => s + (parseFloat(d.deal_value ?? "0") || 0),
     0
   );
-  const wonValue = wonDeals.reduce((s, d) => s + (parseFloat(d.dealValue ?? "0") || 0), 0);
+  const wonValue = wonDeals.reduce((s, d) => s + (parseFloat(d.deal_value ?? "0") || 0), 0);
   const winRate =
     wonDeals.length + lostDeals.length > 0
       ? Math.round(
@@ -82,19 +81,21 @@ async function getAnalyticsData() {
       ? Math.round(wonValue / wonDeals.length)
       : 0;
 
-  // Source attribution
-  const allLeads = await db
-    .select({
-      source: leads.source,
-      totalScore: leadScores.totalScore,
-    })
-    .from(leads)
-    .leftJoin(leadScores, eq(leadScores.leadId, leads.id));
+  // Source attribution - fetch leads with left-joined scores
+  const { data: allLeadsData } = await supabase
+    .from("leads")
+    .select("source, lead_scores(total_score)");
+
+  const allLeads = allLeadsData ?? [];
 
   const sourceMap = new Map<string, { totalScore: number; count: number }>();
   for (const lead of allLeads) {
     const curr = sourceMap.get(lead.source) ?? { totalScore: 0, count: 0 };
-    curr.totalScore += lead.totalScore ?? 0;
+    // lead_scores is an array from the join; take the first element
+    const scoreRow = Array.isArray(lead.lead_scores)
+      ? lead.lead_scores[0]
+      : lead.lead_scores;
+    curr.totalScore += scoreRow?.total_score ?? 0;
     curr.count += 1;
     sourceMap.set(lead.source, curr);
   }
@@ -124,7 +125,7 @@ async function getAnalyticsData() {
     const lostInMonth = lostDeals.filter((_, i) => i % months.length === idx).length;
     const valueInMonth = wonDeals
       .filter((_, i) => i % months.length === idx)
-      .reduce((s, d) => s + (parseFloat(d.dealValue ?? "0") || 0), 0);
+      .reduce((s, d) => s + (parseFloat(d.deal_value ?? "0") || 0), 0);
     return {
       month,
       won: wonInMonth,
