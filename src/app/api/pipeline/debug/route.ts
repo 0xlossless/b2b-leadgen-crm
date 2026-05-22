@@ -1,35 +1,48 @@
-import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    
-    const supabase = createClient(url, serviceKey || anonKey, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    });
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     const dealId = "01KS8ZABWNANHSZE3881YJNT77";
+    const newStage = "proposal_sent";
+    const nowDate = new Date().toISOString();
 
-    // Read before
-    const { data: before } = await supabase.from("deals").select("id, stage, updated_at").eq("id", dealId).single();
+    // Direct REST API call - bypasses any JS client issues
+    const updateRes = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify({ stage: newStage, updated_at: nowDate }),
+    });
 
-    // Update
-    const { error: updateErr } = await supabase.from("deals").update({ stage: "contacted", updated_at: new Date().toISOString() }).eq("id", dealId);
+    const updateBody = await updateRes.json();
 
-    // Read after
-    const { data: after } = await supabase.from("deals").select("id, stage, updated_at").eq("id", dealId).single();
+    // Read back
+    const readRes = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=id,stage,updated_at`, {
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+    });
+
+    const readBody = await readRes.json();
 
     return NextResponse.json({
-      keyUsed: serviceKey ? "service_role" : "anon",
-      before: before ? { stage: before.stage, updated_at: before.updated_at } : null,
-      updateError: updateErr,
-      after: after ? { stage: after.stage, updated_at: after.updated_at } : null,
-      persisted: after?.stage === "contacted",
+      updateStatus: updateRes.status,
+      updateBody,
+      readBack: readBody,
+      persisted: readBody?.[0]?.stage === newStage,
+      serviceKeyPresent: !!serviceKey,
+      serviceKeyLength: serviceKey?.length,
+      supabaseUrl: url,
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
