@@ -58,7 +58,7 @@ async function sendSMS(to: string, body: string): Promise<boolean> {
 
 // Joseph's phone number for lead notifications
 const JOSEPH_PHONE = process.env.NOTIFY_PHONE || "+19255182985";
-const JOSEPH_EMAIL = "Jag.concrete22@gmail.com";
+const JOSEPH_EMAIL = "lossless.x000@gmail.com";
 
 // ---- Email notification via Resend (or fallback log) ----
 async function sendEmailNotification(lead: {
