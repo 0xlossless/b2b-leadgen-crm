@@ -146,6 +146,9 @@ export default function OutreachPage() {
   const [collapsedIndustries, setCollapsedIndustries] = useState<Set<string>>(new Set());
   const [variant, setVariant] = useState<"initial" | "followup">("initial");
   const [statusUpdating, setStatusUpdating] = useState<string | null>(null);
+  const [sending, setSending] = useState<string | null>(null); // activityId being sent
+  const [bulkSending, setBulkSending] = useState(false);
+  const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Fetch leads and outreach data
   const fetchData = useCallback(async () => {
@@ -344,6 +347,117 @@ export default function OutreachPage() {
     ? `Subject: ${emailPreview.subject}\nTo: ${emailPreview.to}\n\n${emailPreview.body}`
     : "";
 
+  // Send a single email via Resend
+  async function handleSendEmail(preview: EmailPreview) {
+    if (!preview.to || !preview.subject || !preview.body) {
+      setSendResult({ success: false, message: "Missing email address, subject, or body." });
+      return;
+    }
+    setSending(preview.outreachId || "new");
+    setSendResult(null);
+    try {
+      const res = await fetch("/api/outreach/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: preview.outreachId || undefined,
+          emailTo: preview.to,
+          subject: preview.subject,
+          body: preview.body,
+          leadId: undefined, // Will be looked up from the activity
+          contactName: preview.contactName || undefined,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSendResult({ success: true, message: `✅ Email sent to ${data.sentTo}` });
+        // Refresh outreach data
+        const refreshRes = await fetch("/api/outreach");
+        const refreshData = await refreshRes.json();
+        setOutreach(refreshData.outreach || []);
+        setStats(refreshData.stats || stats);
+      } else {
+        setSendResult({ success: false, message: data.error || "Failed to send email" });
+      }
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      setSendResult({ success: false, message: "Network error — please try again" });
+    } finally {
+      setSending(null);
+    }
+  }
+
+  // Send from table row (draft -> send)
+  async function handleSendFromRow(record: OutreachRecord) {
+    setSending(record.id);
+    try {
+      const res = await fetch("/api/outreach/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          activityId: record.id,
+          emailTo: record.emailTo,
+          subject: record.subject,
+          body: record.body,
+          leadId: record.leadId,
+        }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(`Failed to send: ${data.error}`);
+      }
+      // Refresh
+      const refreshRes = await fetch("/api/outreach");
+      const refreshData = await refreshRes.json();
+      setOutreach(refreshData.outreach || []);
+      setStats(refreshData.stats || stats);
+    } catch (error) {
+      console.error("Failed to send:", error);
+    } finally {
+      setSending(null);
+    }
+  }
+
+  // Bulk send all drafts
+  async function handleBulkSend() {
+    const drafts = outreach.filter((o) => o.status === "draft" && o.emailTo);
+    if (drafts.length === 0) {
+      alert("No draft emails to send. Generate emails first.");
+      return;
+    }
+    if (!confirm(`Send ${drafts.length} emails? This will send real emails via Resend.`)) return;
+
+    setBulkSending(true);
+    try {
+      const emails = drafts.map((d) => ({
+        activityId: d.id,
+        emailTo: d.emailTo,
+        subject: d.subject,
+        body: d.body,
+        leadId: d.leadId,
+      }));
+
+      const res = await fetch("/api/outreach/send", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emails }),
+      });
+      const data = await res.json();
+
+      alert(
+        `Bulk send complete!\n\n✅ Sent: ${data.summary?.sent || 0}\n❌ Failed: ${data.summary?.failed || 0}\n⏱ Duration: ${Math.round(data.summary?.durationMs / 1000 || 0)}s`
+      );
+
+      // Refresh
+      await fetchData();
+    } catch (error) {
+      console.error("Bulk send failed:", error);
+      alert("Bulk send failed — check console for details");
+    } finally {
+      setBulkSending(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 p-6 lg:p-8">
       {/* Header */}
@@ -407,6 +521,20 @@ export default function OutreachPage() {
             )}
             Generate All
           </Button>
+          {stats.drafts > 0 && (
+            <Button
+              className="bg-blue-600 hover:bg-blue-500 text-white"
+              onClick={handleBulkSend}
+              disabled={bulkSending || bulkGenerating}
+            >
+              {bulkSending ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4 mr-2" />
+              )}
+              Send All ({stats.drafts})
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -628,15 +756,15 @@ export default function OutreachPage() {
                                       variant="ghost"
                                       size="sm"
                                       className="text-blue-400 hover:text-blue-300 h-8"
-                                      disabled={statusUpdating === record.id}
-                                      onClick={() => handleStatusUpdate(record.id, "sent")}
+                                      disabled={sending === record.id || !record.emailTo}
+                                      onClick={() => handleSendFromRow(record)}
                                     >
-                                      {statusUpdating === record.id ? (
+                                      {sending === record.id ? (
                                         <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
                                       ) : (
                                         <Send className="h-3.5 w-3.5 mr-1.5" />
                                       )}
-                                      Mark Sent
+                                      Send
                                     </Button>
                                   )}
                                   {record.status === "sent" && (
@@ -769,10 +897,22 @@ export default function OutreachPage() {
           )}
 
           <DialogFooter className="mt-4 gap-2">
+            {sendResult && (
+              <div className={`flex-1 text-sm px-3 py-2 rounded-lg ${
+                sendResult.success
+                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                  : "bg-red-500/10 text-red-400 border border-red-500/20"
+              }`}>
+                {sendResult.message}
+              </div>
+            )}
             <Button
               variant="outline"
               className="border-zinc-700 text-zinc-300 hover:text-zinc-100"
-              onClick={() => setPreviewOpen(false)}
+              onClick={() => {
+                setPreviewOpen(false);
+                setSendResult(null);
+              }}
             >
               Close
             </Button>
@@ -785,18 +925,22 @@ export default function OutreachPage() {
               <Mail className="h-4 w-4 mr-2" />
               Copy Full Email
             </Button>
-            {emailPreview?.outreachId && (
+            {emailPreview?.to && (
               <Button
                 className="bg-blue-600 hover:bg-blue-500 text-white"
+                disabled={sending !== null}
                 onClick={() => {
-                  if (emailPreview.outreachId) {
-                    handleStatusUpdate(emailPreview.outreachId, "sent");
+                  if (emailPreview) {
+                    handleSendEmail(emailPreview);
                   }
-                  setPreviewOpen(false);
                 }}
               >
-                <Send className="h-4 w-4 mr-2" />
-                Mark as Sent
+                {sending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Send Email
               </Button>
             )}
           </DialogFooter>
