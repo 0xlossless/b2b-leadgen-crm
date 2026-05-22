@@ -37,14 +37,21 @@ export default function PipelinePage() {
       const res = await fetch("/api/pipeline");
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
-      // API returns { stages: { new_lead: [...], contacted: [...], ... } }
-      // Flatten into a single array
-      const allDeals: DealCardData[] = [];
-      if (data.stages) {
-        for (const stageDeals of Object.values(data.stages)) {
-          allDeals.push(...(stageDeals as DealCardData[]));
-        }
-      }
+      // API returns flat array of deals
+      const allDeals: DealCardData[] = (Array.isArray(data) ? data : []).map((d: any) => ({
+        id: d.id,
+        leadId: d.leadId,
+        stage: d.stage,
+        dealValue: d.dealValue,
+        assignedRep: d.assignedRep,
+        companyName: d.companyName ?? "Unknown",
+        industry: d.industry,
+        contactName: d.contactName,
+        contactTitle: null,
+        totalScore: d.totalScore ?? 0,
+        scoreTier: d.tier ?? "cold",
+        updatedAt: d.updatedAt ?? d.createdAt,
+      }));
       setDeals(allDeals);
     } catch (err) {
       console.error("Failed to load deals:", err);
