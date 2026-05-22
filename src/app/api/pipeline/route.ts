@@ -1,53 +1,45 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
+async function supaFetch(path: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: {
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+    },
+    cache: "no-store",
+  });
+  return res.json();
 }
 
 export async function GET() {
   try {
-    const supabase = getSupabase();
+    // Query deals directly via REST
+    const deals = await supaFetch("deals?select=*&order=created_at.desc");
 
-    // Query deals WITHOUT joins to avoid the stale-data PostgREST join bug
-    const { data: deals, error: dealsErr } = await supabase
-      .from("deals")
-      .select("*")
-      .order("created_at", { ascending: false });
-
-    if (dealsErr) throw dealsErr;
-
-    const dealsList = deals || [];
-    if (dealsList.length === 0) {
+    if (!deals || deals.length === 0) {
       return NextResponse.json([]);
     }
 
     // Fetch leads separately
-    const leadIds = Array.from(new Set(dealsList.map(d => d.lead_id).filter(Boolean)));
-
-    const { data: allLeads } = leadIds.length > 0
-      ? await supabase.from("leads").select("*, contacts(full_name, email, phone)").in("id", leadIds)
-      : { data: [] };
-    const leadMap = new Map((allLeads || []).map(l => [l.id, l]));
+    const leadIds = Array.from(new Set(deals.map((d: any) => d.lead_id).filter(Boolean)));
+    const leadsQuery = leadIds.map(id => `id.eq.${id}`).join(",");
+    const allLeads = leadIds.length > 0
+      ? await supaFetch(`leads?select=*,contacts(full_name,email,phone)&or=(${leadsQuery})`)
+      : [];
+    const leadMap = new Map((allLeads || []).map((l: any) => [l.id, l]));
 
     // Fetch lead_scores separately
-    const { data: allScores } = leadIds.length > 0
-      ? await supabase.from("lead_scores").select("*").in("lead_id", leadIds)
-      : { data: [] };
-    const scoreMap = new Map((allScores || []).map(s => [s.lead_id, s]));
+    const scoresQuery = leadIds.map(id => `lead_id.eq.${id}`).join(",");
+    const allScores = leadIds.length > 0
+      ? await supaFetch(`lead_scores?select=*&or=(${scoresQuery})`)
+      : [];
+    const scoreMap = new Map((allScores || []).map((s: any) => [s.lead_id, s]));
 
-    const mapped = dealsList.map(d => {
+    const mapped = deals.map((d: any) => {
       const lead = leadMap.get(d.lead_id);
       const score = scoreMap.get(d.lead_id);
       return {
