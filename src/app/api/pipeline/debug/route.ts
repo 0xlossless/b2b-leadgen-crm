@@ -8,63 +8,56 @@ export async function GET() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const keyUsed = serviceKey ? "service_role" : "anon";
     
     const supabase = createClient(url, serviceKey || anonKey);
 
-    // 1. Read current state
-    const { data: before, error: readErr } = await supabase
+    // List ALL deals - raw, no joins
+    const { data: allDeals, error: dealsErr } = await supabase
       .from("deals")
-      .select("id, stage, updated_at")
-      .limit(5);
+      .select("*")
+      .order("created_at", { ascending: false });
 
-    if (readErr) {
-      return NextResponse.json({ error: "read failed", details: readErr, keyUsed });
-    }
-
-    if (!before || before.length === 0) {
-      return NextResponse.json({ error: "no deals found", keyUsed });
-    }
-
-    const dealId = before[0].id;
-    const originalStage = before[0].stage;
-    const testStage = originalStage === "new_lead" ? "contacted" : "new_lead";
-
-    // 2. Attempt update
-    const { data: updateData, error: updateErr, count: updateCount, status: updateStatus, statusText } = await supabase
+    // List ALL deals - with joins (same as GET /api/pipeline)
+    const { data: joinedDeals, error: joinErr } = await supabase
       .from("deals")
-      .update({ stage: testStage, updated_at: new Date().toISOString() })
-      .eq("id", dealId)
-      .select();
+      .select("*, leads(company_name, industry, city, contacts(full_name, email, phone))")
+      .order("created_at", { ascending: false });
 
-    // 3. Read after update
-    const { data: after, error: afterErr } = await supabase
+    // Test update on Mike Thompson's deal specifically
+    const mikeId = "01KS8ZABWNANHSZE3881YJNT77";
+    
+    const { data: mikeBefore } = await supabase
       .from("deals")
-      .select("id, stage, updated_at")
-      .eq("id", dealId)
+      .select("*")
+      .eq("id", mikeId)
       .single();
 
-    // 4. Revert
-    await supabase
+    const { data: mikeUpdate, error: mikeUpdateErr } = await supabase
       .from("deals")
-      .update({ stage: originalStage })
-      .eq("id", dealId);
+      .update({ stage: "contacted", updated_at: new Date().toISOString() })
+      .eq("id", mikeId)
+      .select()
+      .single();
+
+    const { data: mikeAfter } = await supabase
+      .from("deals")
+      .select("*")
+      .eq("id", mikeId)
+      .single();
 
     return NextResponse.json({
-      keyUsed,
-      dealId,
-      originalStage,
-      testStage,
-      updateResult: {
-        data: updateData,
-        error: updateErr,
-        count: updateCount,
-        status: updateStatus,
-        statusText,
-      },
-      afterUpdate: after,
-      afterReadError: afterErr,
-      stageChanged: after?.stage === testStage,
+      keyUsed: serviceKey ? "service_role" : "anon",
+      rawDeals: (allDeals || []).map(d => ({ id: d.id, stage: d.stage, lead_id: d.lead_id, updated_at: d.updated_at })),
+      rawDealsError: dealsErr,
+      joinedDeals: (joinedDeals || []).map(d => ({ id: d.id, stage: d.stage, lead_id: d.lead_id })),
+      joinedDealsError: joinErr,
+      mikeTest: {
+        before: mikeBefore ? { stage: mikeBefore.stage, updated_at: mikeBefore.updated_at } : null,
+        updateResult: mikeUpdate ? { stage: mikeUpdate.stage, updated_at: mikeUpdate.updated_at } : null,
+        updateError: mikeUpdateErr,
+        after: mikeAfter ? { stage: mikeAfter.stage, updated_at: mikeAfter.updated_at } : null,
+        updatePersisted: mikeAfter?.stage === "contacted",
+      }
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
