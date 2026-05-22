@@ -85,6 +85,24 @@ export async function POST(request: NextRequest) {
     });
     if (dealError) throw dealError;
 
+    // Score as HOT lead — they came to us
+    const { error: scoreError } = await supabase.from("lead_scores").insert({
+      id: ulid(),
+      lead_id: leadId,
+      total_score: 90,
+      tier: "hot",
+      industry_match: 20,
+      employee_fit: 10,
+      decision_maker: 20,
+      tech_match: 10,
+      funding_event: 10,
+      traffic_score: 10,
+      email_verified_score: email ? 10 : 0,
+      disqualified: false,
+      scored_at: nowDate,
+    });
+    if (scoreError) console.error("Score insert error:", scoreError);
+
     // Log the activity
     const metadata = JSON.stringify({
       projectType: projectType || "Not specified",
