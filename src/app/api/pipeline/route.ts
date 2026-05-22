@@ -30,14 +30,14 @@ export async function GET() {
     const allLeads = leadIds.length > 0
       ? await supaFetch(`leads?select=*,contacts(full_name,email,phone)&or=(${leadsQuery})`)
       : [];
-    const leadMap = new Map((allLeads || []).map((l: any) => [l.id, l]));
+    const leadMap = new Map<string, any>((allLeads || []).map((l: any) => [l.id, l]));
 
     // Fetch lead_scores separately
     const scoresQuery = leadIds.map(id => `lead_id.eq.${id}`).join(",");
     const allScores = leadIds.length > 0
       ? await supaFetch(`lead_scores?select=*&or=(${scoresQuery})`)
       : [];
-    const scoreMap = new Map((allScores || []).map((s: any) => [s.lead_id, s]));
+    const scoreMap = new Map<string, any>((allScores || []).map((s: any) => [s.lead_id, s]));
 
     const mapped = deals.map((d: any) => {
       const lead = leadMap.get(d.lead_id);
