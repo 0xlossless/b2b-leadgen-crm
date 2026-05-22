@@ -7,49 +7,26 @@ export async function GET() {
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-    // Check for triggers and RLS policies on deals table
-    const queries = [
-      { name: "triggers", sql: "SELECT trigger_name, event_manipulation, action_statement FROM information_schema.triggers WHERE event_object_table = 'deals'" },
-      { name: "rls_policies", sql: "SELECT policyname, permissive, cmd, qual, with_check FROM pg_policies WHERE tablename = 'deals'" },
-      { name: "rls_enabled", sql: "SELECT relname, relrowsecurity, relforcerowsecurity FROM pg_class WHERE relname = 'deals'" },
-    ];
-
-    const results: Record<string, any> = {};
-
-    for (const q of queries) {
-      const res = await fetch(`${url}/rest/v1/rpc/`, {
-        method: "POST",
-        headers: {
-          "apikey": serviceKey,
-          "Authorization": `Bearer ${serviceKey}`,
-          "Content-Type": "application/json",
-        },
-        // Can't run arbitrary SQL via REST, but let's try the raw SQL endpoint
-      });
-    }
-
-    // Use the SQL endpoint directly
-    for (const q of queries) {
-      const res = await fetch(`${url}/rest/v1/`, {
-        method: "GET",
-        headers: {
-          "apikey": serviceKey,
-          "Authorization": `Bearer ${serviceKey}`,
-        },
-      });
-    }
-
-    // Alternative: Just check the current deal state directly with multiple reads
     const dealId = "01KS8ZABWNANHSZE3881YJNT77";
-    
-    // 1. Read current state
-    const read1Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=stage,updated_at`, {
-      headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` },
-    });
-    const read1 = await read1Res.json();
 
-    // 2. Update
-    const updateRes = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}`, {
+    // Use Supabase's pg_net or direct SQL via the SQL endpoint
+    // Actually, use the rpc endpoint to run custom SQL
+    
+    // First, let's check triggers via information_schema
+    const triggersRes = await fetch(`${url}/rest/v1/rpc/`, {
+      method: "POST",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+    
+    // Can't do arbitrary SQL via REST. Let's try a different approach.
+    // Check if the issue is with the specific column or value
+    
+    // Test 1: Update ONLY updated_at (no stage change)
+    const test1Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}`, {
       method: "PATCH",
       headers: {
         "apikey": serviceKey,
@@ -57,32 +34,69 @@ export async function GET() {
         "Content-Type": "application/json",
         "Prefer": "return=representation",
       },
-      body: JSON.stringify({ stage: "closed_won", updated_at: new Date().toISOString() }),
+      body: JSON.stringify({ updated_at: "2099-01-01T00:00:00.000Z" }),
     });
-    const update = await updateRes.json();
+    const test1 = await test1Res.json();
 
-    // 3. Read immediately
-    const read2Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=stage,updated_at`, {
+    // Read back
+    const read1Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=stage,updated_at`, {
+      headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` },
+    });
+    const read1 = await read1Res.json();
+
+    // Test 2: Update deal_value
+    const test2Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify({ deal_value: 99999 }),
+    });
+    const test2 = await test2Res.json();
+
+    // Read back
+    const read2Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=deal_value,updated_at`, {
       headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` },
     });
     const read2 = await read2Res.json();
 
-    // 4. Wait 1 second
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Test 3: Update assigned_rep
+    const test3Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}`, {
+      method: "PATCH",
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
+      },
+      body: JSON.stringify({ assigned_rep: "test_rep" }),
+    });
+    const test3 = await test3Res.json();
 
-    // 5. Read again
-    const read3Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=stage,updated_at`, {
+    const read3Res = await fetch(`${url}/rest/v1/deals?id=eq.${dealId}&select=assigned_rep`, {
       headers: { "apikey": serviceKey, "Authorization": `Bearer ${serviceKey}` },
     });
     const read3 = await read3Res.json();
 
     return NextResponse.json({
-      read1_before: read1,
-      update_response: update,
-      read2_after_immediate: read2,
-      read3_after_1s: read3,
-      persisted_immediate: read2?.[0]?.stage === "closed_won",
-      persisted_1s: read3?.[0]?.stage === "closed_won",
+      test1_updated_at: {
+        response_updated_at: test1?.[0]?.updated_at,
+        readback_updated_at: read1?.[0]?.updated_at,
+        persisted: read1?.[0]?.updated_at === "2099-01-01T00:00:00.000Z",
+      },
+      test2_deal_value: {
+        response_deal_value: test2?.[0]?.deal_value,
+        readback_deal_value: read2?.[0]?.deal_value,
+        persisted: read2?.[0]?.deal_value == 99999,
+      },
+      test3_assigned_rep: {
+        response_assigned_rep: test3?.[0]?.assigned_rep,
+        readback_assigned_rep: read3?.[0]?.assigned_rep,
+        persisted: read3?.[0]?.assigned_rep === "test_rep",
+      },
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
