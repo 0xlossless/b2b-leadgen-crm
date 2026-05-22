@@ -27,8 +27,30 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (body.winLossReason !== undefined) updates.win_loss_reason = body.winLossReason;
     if (stage === "closed_won" || stage === "closed_lost") updates.close_date = nowDate;
 
-    const { data: deal, error } = await supabase.from("deals").update(updates).eq("id", params.id).select().single();
-    if (error) throw error;
+    // Perform update
+    const { error: updateError, count } = await supabase
+      .from("deals")
+      .update(updates)
+      .eq("id", params.id);
+
+    if (updateError) {
+      console.error("PATCH update error:", updateError);
+      return NextResponse.json({ error: updateError.message, details: updateError }, { status: 500 });
+    }
+
+    // Fetch the updated record separately
+    const { data: deal, error: fetchError } = await supabase
+      .from("deals")
+      .select("*")
+      .eq("id", params.id)
+      .single();
+
+    if (fetchError) {
+      console.error("PATCH fetch error:", fetchError);
+      return NextResponse.json({ error: fetchError.message }, { status: 500 });
+    }
+
+    console.log("PATCH result - stage:", deal.stage, "expected:", stage, "match:", deal.stage === stage);
 
     // Log activity
     if (stage) {
@@ -42,7 +64,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       });
     }
 
-    return NextResponse.json(deal);
+    return NextResponse.json({ ...deal, _debug: { requestedStage: stage, actualStage: deal.stage, matched: deal.stage === stage } });
   } catch (error) {
     console.error("PATCH /api/pipeline/[id] error:", error);
     return NextResponse.json({ error: "Failed to update deal" }, { status: 500 });
