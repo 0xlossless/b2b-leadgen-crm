@@ -164,26 +164,13 @@ export async function POST(request: NextRequest) {
     // ---- SEND SMS NOTIFICATIONS (non-blocking — don't fail the response) ----
 
     // 1. Notify Joseph about the new hot lead
-    const josephMsg = `🔥 NEW QUOTE REQUEST\n\n` +
-      `👤 ${name}\n` +
-      `📞 ${phone}\n` +
-      `${email ? `📧 ${email}\n` : ""}` +
-      `📍 ${address || "No address"}\n` +
-      `🏠 ${projectType || "Not specified"}\n` +
-      `📐 ${squareFootage ? squareFootage + " sq ft" : "Size TBD"}\n` +
-      `💰 Est. value: $${estimatedValue.toLocaleString()}\n` +
-      `${message ? `\n💬 "${message}"` : ""}\n` +
-      `\nCall them NOW — speed wins jobs! 💪`;
+    const josephMsg = `NEW LEAD: ${name} | ${phone} | ${projectType || "N/A"} | ${squareFootage ? squareFootage + "sqft" : "?"} | $${estimatedValue.toLocaleString()} | ${address || "No addr"}`;
 
     sendSMS(JOSEPH_PHONE, josephMsg).catch(console.error);
 
     // 2. Auto-confirm to the customer
     const firstName = name.split(" ")[0];
-    const customerMsg = `Hi ${firstName}! Thanks for reaching out to Golden State Epoxy Floors. 🙌\n\n` +
-      `We received your quote request and Joseph will personally call you shortly to discuss your project.\n\n` +
-      `In the meantime, feel free to call us at (925) 518-2985.\n\n` +
-      `— Golden State Epoxy Floors\n` +
-      `California's Metallic Flooring Artisans`;
+    const customerMsg = `Hi ${firstName}, Golden State Epoxy Floors got your quote request! Joseph will call you shortly. Questions? (925) 518-2985`;
 
     // Clean phone number for Twilio (needs +1 format)
     const cleanPhone = phone.replace(/[^0-9]/g, "");
