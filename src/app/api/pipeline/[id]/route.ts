@@ -24,14 +24,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const { stage, dealValue } = body;
     const nowDate = new Date().toISOString();
 
-    const updates: Record<string, any> = { updated_at: nowDate };
+    const updates: Record<string, any> = {};
     if (stage) updates.stage = stage;
     if (dealValue !== undefined) updates.deal_value = String(dealValue);
     if (body.nextAction !== undefined) updates.next_action = body.nextAction;
     if (body.nextActionDate !== undefined) updates.next_action_date = body.nextActionDate;
     if (body.assignedRep !== undefined) updates.assigned_rep = body.assignedRep;
     if (body.winLossReason !== undefined) updates.win_loss_reason = body.winLossReason;
-    if (stage === "closed_won" || stage === "closed_lost") updates.close_date = nowDate;
+    if (stage === "closed_won" || stage === "closed_lost") updates.close_date = new Date().toISOString();
 
     // Perform update
     const { error: updateError } = await supabase
