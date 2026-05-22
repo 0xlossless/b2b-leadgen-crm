@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Get leads with related data
-    let query = supabase.from("leads").select("*, contacts(*), lead_scores(*), deals(*)", { count: "exact" });
+    // Note: Using separate queries for lead_scores since FK relationship may not exist
+    let query = supabase.from("leads").select("*, contacts(*), deals(*)", { count: "exact" });
 
     if (search) {
       query = query.or(`company_name.ilike.%${search}%,industry.ilike.%${search}%,city.ilike.%${search}%`);
@@ -35,8 +36,18 @@ export async function GET(request: NextRequest) {
 
     if (error) throw error;
 
+    // Fetch all lead_scores for the returned leads
+    const leadIds = (leads || []).map(l => l.id);
+    const { data: allScores } = leadIds.length > 0
+      ? await supabase.from("lead_scores").select("*").in("lead_id", leadIds)
+      : { data: [] };
+    
+    const scoreMap = new Map((allScores || []).map(s => [s.lead_id, s]));
+
     // Filter by tier/stage in JS (since they're in related tables)
-    let filtered = (leads || []).map(lead => ({
+    let filtered = (leads || []).map(lead => {
+      const score = scoreMap.get(lead.id);
+      return {
       id: lead.id,
       companyName: lead.company_name,
       website: lead.website,
@@ -48,8 +59,8 @@ export async function GET(request: NextRequest) {
       country: lead.country,
       source: lead.source,
       confidenceScore: lead.confidence_score,
-      score: lead.lead_scores?.[0]?.total_score ?? null,
-      tier: lead.lead_scores?.[0]?.tier ?? null,
+      score: score?.total_score ?? null,
+      tier: score?.tier ?? null,
       stage: lead.deals?.[0]?.stage ?? null,
       dealValue: lead.deals?.[0]?.deal_value ?? null,
       assignedRep: lead.deals?.[0]?.assigned_rep ?? null,
@@ -58,7 +69,8 @@ export async function GET(request: NextRequest) {
       emailVerified: lead.contacts?.[0]?.email_verified ?? false,
       createdAt: lead.created_at,
       updatedAt: lead.updated_at,
-    }));
+    };
+    });
 
     if (tier) filtered = filtered.filter(l => l.tier === tier);
     if (stage) filtered = filtered.filter(l => l.stage === stage);

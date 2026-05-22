@@ -15,12 +15,21 @@ export async function GET() {
     const supabase = getSupabase();
     const { data: deals, error } = await supabase
       .from("deals")
-      .select("*, leads(company_name, industry, city, lead_scores(tier, total_score), contacts(full_name, email, phone))")
+      .select("*, leads(company_name, industry, city, contacts(full_name, email, phone))")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    const mapped = (deals || []).map(d => ({
+    // Fetch lead_scores separately (FK relationship may not exist)
+    const leadIds = (deals || []).map(d => d.lead_id).filter(Boolean);
+    const { data: allScores } = leadIds.length > 0
+      ? await supabase.from("lead_scores").select("*").in("lead_id", leadIds)
+      : { data: [] };
+    const scoreMap = new Map((allScores || []).map(s => [s.lead_id, s]));
+
+    const mapped = (deals || []).map(d => {
+      const score = scoreMap.get(d.lead_id);
+      return {
       id: d.id,
       leadId: d.lead_id,
       stage: d.stage,
@@ -38,9 +47,10 @@ export async function GET() {
       contactName: d.leads?.contacts?.[0]?.full_name,
       contactEmail: d.leads?.contacts?.[0]?.email,
       contactPhone: d.leads?.contacts?.[0]?.phone,
-      tier: d.leads?.lead_scores?.[0]?.tier ?? null,
-      totalScore: d.leads?.lead_scores?.[0]?.total_score ?? null,
-    }));
+      tier: score?.tier ?? null,
+      totalScore: score?.total_score ?? null,
+    };
+    });
 
     return NextResponse.json(mapped);
   } catch (error) {
