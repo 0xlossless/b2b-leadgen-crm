@@ -49,9 +49,10 @@ interface LeadsTableProps {
   sortBy: string;
   sortOrder: string;
   onSort: (column: string) => void;
+  onDelete?: (leadId: string, companyName: string) => void;
 }
 
-export function LeadsTable({ leads, sortBy, sortOrder, onSort }: LeadsTableProps) {
+export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: LeadsTableProps) {
   const router = useRouter();
 
   function SortIndicator({ column }: { column: string }) {
@@ -220,6 +221,9 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort }: LeadsTableProps
                         className="text-red-400"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (onDelete) {
+                            onDelete(lead.id, lead.companyName);
+                          }
                         }}
                       >
                         <Trash2 className="h-4 w-4 mr-2" />

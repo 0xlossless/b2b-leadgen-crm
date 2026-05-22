@@ -6,6 +6,16 @@ import { Plus, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { LeadsTable } from "@/components/leads/leads-table";
 import { LeadFilters } from "@/components/leads/lead-filters";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Lead {
   id: string;
@@ -56,6 +66,8 @@ export default function LeadDatabasePage() {
   const [sortBy, setSortBy] = useState("createdAt");
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -150,6 +162,30 @@ export default function LeadDatabasePage() {
     URL.revokeObjectURL(url);
   }
 
+  function handleDeleteRequest(leadId: string, companyName: string) {
+    setDeleteTarget({ id: leadId, name: companyName });
+  }
+
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/leads/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+      if (response.ok) {
+        fetchLeads();
+      } else {
+        console.error("Failed to delete lead");
+      }
+    } catch (error) {
+      console.error("Failed to delete lead:", error);
+    } finally {
+      setDeleting(false);
+      setDeleteTarget(null);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 p-6 lg:p-8">
       {/* Header */}
@@ -199,6 +235,7 @@ export default function LeadDatabasePage() {
           sortBy={sortBy}
           sortOrder={sortOrder}
           onSort={handleSort}
+          onDelete={handleDeleteRequest}
         />
       </div>
 
@@ -253,6 +290,30 @@ export default function LeadDatabasePage() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-700">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-zinc-100">Delete Lead</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to delete <span className="font-semibold text-zinc-200">{deleteTarget?.name}</span>? This will also remove all associated contacts, scores, deals, and activity logs. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-500 text-white"
+              onClick={handleDeleteConfirm}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete Lead"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
