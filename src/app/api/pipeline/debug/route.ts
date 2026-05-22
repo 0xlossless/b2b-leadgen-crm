@@ -9,55 +9,27 @@ export async function GET() {
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     
-    const supabase = createClient(url, serviceKey || anonKey);
+    const supabase = createClient(url, serviceKey || anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
 
-    // List ALL deals - raw, no joins
-    const { data: allDeals, error: dealsErr } = await supabase
-      .from("deals")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const dealId = "01KS8ZABWNANHSZE3881YJNT77";
 
-    // List ALL deals - with joins (same as GET /api/pipeline)
-    const { data: joinedDeals, error: joinErr } = await supabase
-      .from("deals")
-      .select("*, leads(company_name, industry, city, contacts(full_name, email, phone))")
-      .order("created_at", { ascending: false });
+    // Read before
+    const { data: before } = await supabase.from("deals").select("id, stage, updated_at").eq("id", dealId).single();
 
-    // Test update on Mike Thompson's deal specifically
-    const mikeId = "01KS8ZABWNANHSZE3881YJNT77";
-    
-    const { data: mikeBefore } = await supabase
-      .from("deals")
-      .select("*")
-      .eq("id", mikeId)
-      .single();
+    // Update
+    const { error: updateErr } = await supabase.from("deals").update({ stage: "contacted", updated_at: new Date().toISOString() }).eq("id", dealId);
 
-    const { data: mikeUpdate, error: mikeUpdateErr } = await supabase
-      .from("deals")
-      .update({ stage: "contacted", updated_at: new Date().toISOString() })
-      .eq("id", mikeId)
-      .select()
-      .single();
-
-    const { data: mikeAfter } = await supabase
-      .from("deals")
-      .select("*")
-      .eq("id", mikeId)
-      .single();
+    // Read after
+    const { data: after } = await supabase.from("deals").select("id, stage, updated_at").eq("id", dealId).single();
 
     return NextResponse.json({
       keyUsed: serviceKey ? "service_role" : "anon",
-      rawDeals: (allDeals || []).map(d => ({ id: d.id, stage: d.stage, lead_id: d.lead_id, updated_at: d.updated_at })),
-      rawDealsError: dealsErr,
-      joinedDeals: (joinedDeals || []).map(d => ({ id: d.id, stage: d.stage, lead_id: d.lead_id })),
-      joinedDealsError: joinErr,
-      mikeTest: {
-        before: mikeBefore ? { stage: mikeBefore.stage, updated_at: mikeBefore.updated_at } : null,
-        updateResult: mikeUpdate ? { stage: mikeUpdate.stage, updated_at: mikeUpdate.updated_at } : null,
-        updateError: mikeUpdateErr,
-        after: mikeAfter ? { stage: mikeAfter.stage, updated_at: mikeAfter.updated_at } : null,
-        updatePersisted: mikeAfter?.stage === "contacted",
-      }
+      before: before ? { stage: before.stage, updated_at: before.updated_at } : null,
+      updateError: updateErr,
+      after: after ? { stage: after.stage, updated_at: after.updated_at } : null,
+      persisted: after?.stage === "contacted",
     });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

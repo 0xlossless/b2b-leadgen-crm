@@ -6,58 +6,71 @@ export const dynamic = "force-dynamic";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
   );
 }
 
 export async function GET() {
   try {
     const supabase = getSupabase();
-    
-    // Debug: check if service role key is being used
-    const isServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
-    
-    const { data: deals, error } = await supabase
+
+    // Query deals WITHOUT joins to avoid the stale-data PostgREST join bug
+    const { data: deals, error: dealsErr } = await supabase
       .from("deals")
-      .select("*, leads(company_name, industry, city, contacts(full_name, email, phone))")
+      .select("*")
       .order("created_at", { ascending: false });
 
-    if (error) throw error;
+    if (dealsErr) throw dealsErr;
 
-    // Debug: log raw stage values
-    console.log("GET pipeline - raw deal stages:", (deals || []).map(d => ({ id: d.id, stage: d.stage, updated_at: d.updated_at })));
-    console.log("GET pipeline - using service role key:", isServiceRole);
+    const dealsList = deals || [];
+    if (dealsList.length === 0) {
+      return NextResponse.json([]);
+    }
 
-    // Fetch lead_scores separately (FK relationship may not exist)
-    const leadIds = (deals || []).map(d => d.lead_id).filter(Boolean);
+    // Fetch leads separately
+    const leadIds = Array.from(new Set(dealsList.map(d => d.lead_id).filter(Boolean)));
+
+    const { data: allLeads } = leadIds.length > 0
+      ? await supabase.from("leads").select("*, contacts(full_name, email, phone)").in("id", leadIds)
+      : { data: [] };
+    const leadMap = new Map((allLeads || []).map(l => [l.id, l]));
+
+    // Fetch lead_scores separately
     const { data: allScores } = leadIds.length > 0
       ? await supabase.from("lead_scores").select("*").in("lead_id", leadIds)
       : { data: [] };
     const scoreMap = new Map((allScores || []).map(s => [s.lead_id, s]));
 
-    const mapped = (deals || []).map(d => {
+    const mapped = dealsList.map(d => {
+      const lead = leadMap.get(d.lead_id);
       const score = scoreMap.get(d.lead_id);
       return {
-      id: d.id,
-      leadId: d.lead_id,
-      stage: d.stage,
-      dealValue: d.deal_value,
-      assignedRep: d.assigned_rep,
-      nextAction: d.next_action,
-      nextActionDate: d.next_action_date,
-      closeDate: d.close_date,
-      winLossReason: d.win_loss_reason,
-      createdAt: d.created_at,
-      updatedAt: d.updated_at,
-      companyName: d.leads?.company_name,
-      industry: d.leads?.industry,
-      city: d.leads?.city,
-      contactName: d.leads?.contacts?.[0]?.full_name,
-      contactEmail: d.leads?.contacts?.[0]?.email,
-      contactPhone: d.leads?.contacts?.[0]?.phone,
-      tier: score?.tier ?? null,
-      totalScore: score?.total_score ?? null,
-    };
+        id: d.id,
+        leadId: d.lead_id,
+        stage: d.stage,
+        dealValue: d.deal_value ? Number(d.deal_value) : null,
+        assignedRep: d.assigned_rep,
+        nextAction: d.next_action,
+        nextActionDate: d.next_action_date,
+        closeDate: d.close_date,
+        winLossReason: d.win_loss_reason,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+        companyName: lead?.company_name ?? "Unknown",
+        industry: lead?.industry,
+        city: lead?.city,
+        contactName: lead?.contacts?.[0]?.full_name,
+        contactEmail: lead?.contacts?.[0]?.email,
+        contactPhone: lead?.contacts?.[0]?.phone,
+        tier: score?.tier ?? null,
+        totalScore: score?.total_score ?? null,
+      };
     });
 
     return NextResponse.json(mapped);

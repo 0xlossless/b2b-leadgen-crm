@@ -7,7 +7,13 @@ export const dynamic = "force-dynamic";
 function getSupabase() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
   );
 }
 
@@ -28,17 +34,17 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     if (stage === "closed_won" || stage === "closed_lost") updates.close_date = nowDate;
 
     // Perform update
-    const { error: updateError, count } = await supabase
+    const { error: updateError } = await supabase
       .from("deals")
       .update(updates)
       .eq("id", params.id);
 
     if (updateError) {
       console.error("PATCH update error:", updateError);
-      return NextResponse.json({ error: updateError.message, details: updateError }, { status: 500 });
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
     }
 
-    // Fetch the updated record separately
+    // Fetch the updated record
     const { data: deal, error: fetchError } = await supabase
       .from("deals")
       .select("*")
@@ -46,11 +52,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       .single();
 
     if (fetchError) {
-      console.error("PATCH fetch error:", fetchError);
       return NextResponse.json({ error: fetchError.message }, { status: 500 });
     }
-
-    console.log("PATCH result - stage:", deal.stage, "expected:", stage, "match:", deal.stage === stage);
 
     // Log activity
     if (stage) {
@@ -64,7 +67,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
       });
     }
 
-    return NextResponse.json({ ...deal, _debug: { requestedStage: stage, actualStage: deal.stage, matched: deal.stage === stage } });
+    return NextResponse.json(deal);
   } catch (error) {
     console.error("PATCH /api/pipeline/[id] error:", error);
     return NextResponse.json({ error: "Failed to update deal" }, { status: 500 });
