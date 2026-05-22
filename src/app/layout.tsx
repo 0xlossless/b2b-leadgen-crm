@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { cn } from "@/lib/utils";
-import { AppShell } from "@/components/layout/app-shell";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -11,7 +10,7 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "LeadGen CRM",
+  title: "GS Epoxy CRM",
   description: "B2B Lead Generation & Pipeline Management CRM",
 };
 
@@ -22,9 +21,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("dark font-sans", geistSans.variable)}>
-      <body className="antialiased">
-        <AppShell>{children}</AppShell>
-      </body>
+      <body className="antialiased">{children}</body>
     </html>
   );
 }

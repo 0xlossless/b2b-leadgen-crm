@@ -30,7 +30,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Mail,
+  LogOut,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -123,6 +125,39 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
   );
 }
 
+// ─── Sign Out Button ─────────────────────────────────────
+function SignOutButton({ collapsed }: { collapsed: boolean }) {
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
+  const button = (
+    <button
+      onClick={handleSignOut}
+      className={cn(
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 w-full",
+        collapsed && "justify-center"
+      )}
+    >
+      <LogOut className="h-5 w-5 shrink-0" />
+      {!collapsed && <span>Sign Out</span>}
+    </button>
+  );
+
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>{button}</TooltipTrigger>
+        <TooltipContent side="right">Sign Out</TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return button;
+}
+
 // ─── Desktop Sidebar ──────────────────────────────────────
 export function DesktopSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -139,7 +174,8 @@ export function DesktopSidebar() {
         <div className="flex-1 overflow-y-auto py-2">
           <SidebarNav collapsed={collapsed} />
         </div>
-        <div className="border-t border-zinc-800 p-2">
+        <div className="border-t border-zinc-800 p-2 space-y-1">
+          <SignOutButton collapsed={collapsed} />
           <Button
             variant="ghost"
             size="icon"
@@ -176,8 +212,11 @@ export function MobileSidebar() {
       <SheetContent side="left" className="w-[240px] bg-zinc-950 p-0">
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <SidebarBrand collapsed={false} />
-        <div className="py-2" onClick={() => setOpen(false)}>
+        <div className="flex-1 py-2" onClick={() => setOpen(false)}>
           <SidebarNav collapsed={false} />
+        </div>
+        <div className="border-t border-zinc-800 p-2">
+          <SignOutButton collapsed={false} />
         </div>
       </SheetContent>
     </Sheet>
