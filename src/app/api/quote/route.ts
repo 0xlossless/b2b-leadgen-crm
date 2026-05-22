@@ -58,6 +58,69 @@ async function sendSMS(to: string, body: string): Promise<boolean> {
 
 // Joseph's phone number for lead notifications
 const JOSEPH_PHONE = process.env.NOTIFY_PHONE || "+19255182985";
+const JOSEPH_EMAIL = "Jag.concrete22@gmail.com";
+
+// ---- Email notification via Resend (or fallback log) ----
+async function sendEmailNotification(lead: {
+  name: string; email?: string; phone: string; address?: string;
+  projectType?: string; squareFootage?: string; message?: string; estimatedValue: number;
+}): Promise<boolean> {
+  const resendKey = process.env.RESEND_API_KEY;
+  
+  if (!resendKey) {
+    console.log("[EMAIL SKIPPED] RESEND_API_KEY not configured. Lead details:", JSON.stringify(lead));
+    return false;
+  }
+
+  const htmlBody = `
+    <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#0a0a0a;color:#fff;padding:30px;border-top:3px solid #C9A84C;">
+      <h1 style="color:#C9A84C;font-size:24px;margin:0 0 5px;">🔥 New Quote Request</h1>
+      <p style="color:#999;margin:0 0 20px;">From your website — goldenstateepoxyfloors.com</p>
+      <table style="width:100%;border-collapse:collapse;">
+        <tr><td style="padding:8px 0;color:#C9A84C;width:140px;">Name</td><td style="padding:8px 0;">${lead.name}</td></tr>
+        <tr><td style="padding:8px 0;color:#C9A84C;">Phone</td><td style="padding:8px 0;"><a href="tel:${lead.phone}" style="color:#fff;">${lead.phone}</a></td></tr>
+        ${lead.email ? `<tr><td style="padding:8px 0;color:#C9A84C;">Email</td><td style="padding:8px 0;">${lead.email}</td></tr>` : ""}
+        ${lead.address ? `<tr><td style="padding:8px 0;color:#C9A84C;">Address</td><td style="padding:8px 0;">${lead.address}</td></tr>` : ""}
+        <tr><td style="padding:8px 0;color:#C9A84C;">Project Type</td><td style="padding:8px 0;">${lead.projectType || "Not specified"}</td></tr>
+        <tr><td style="padding:8px 0;color:#C9A84C;">Square Footage</td><td style="padding:8px 0;">${lead.squareFootage || "Not specified"}</td></tr>
+        <tr><td style="padding:8px 0;color:#C9A84C;">Est. Value</td><td style="padding:8px 0;font-weight:bold;color:#C9A84C;">$${lead.estimatedValue.toLocaleString()}</td></tr>
+      </table>
+      ${lead.message ? `<div style="margin-top:20px;padding:15px;background:#1a1a1a;border-left:3px solid #C9A84C;"><p style="color:#999;margin:0 0 5px;font-size:12px;">MESSAGE</p><p style="margin:0;">${lead.message}</p></div>` : ""}
+      <div style="margin-top:25px;padding:15px;background:#C9A84C;text-align:center;">
+        <a href="tel:${lead.phone}" style="color:#0a0a0a;font-weight:bold;text-decoration:none;font-size:16px;">📞 CALL ${lead.name.split(" ")[0].toUpperCase()} NOW</a>
+      </div>
+      <p style="color:#666;font-size:12px;margin-top:20px;text-align:center;">This lead is marked as HOT in your CRM dashboard</p>
+    </div>
+  `;
+
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${resendKey}`,
+      },
+      body: JSON.stringify({
+        from: "Golden State Epoxy Leads <onboarding@resend.dev>",
+        to: [JOSEPH_EMAIL],
+        subject: `🔥 New Quote: ${lead.name} — ${lead.projectType || "Quote Request"} — $${lead.estimatedValue.toLocaleString()}`,
+        html: htmlBody,
+      }),
+    });
+
+    const data = await response.json();
+    if (response.ok) {
+      console.log(`[EMAIL SENT] to ${JOSEPH_EMAIL}, ID: ${data.id}`);
+      return true;
+    } else {
+      console.error(`[EMAIL ERROR]`, data);
+      return false;
+    }
+  } catch (err) {
+    console.error("[EMAIL ERROR]", err);
+    return false;
+  }
+}
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
@@ -161,22 +224,24 @@ export async function POST(request: NextRequest) {
       created_at: nowDate,
     });
 
-    // ---- SEND SMS NOTIFICATIONS (non-blocking — don't fail the response) ----
+    // ---- SEND NOTIFICATIONS (non-blocking) ----
 
-    // 1. Notify Joseph about the new hot lead
+    // 1. Notify Joseph via SMS (requires Twilio A2P registration)
     const josephMsg = `NEW LEAD: ${name} | ${phone} | ${projectType || "N/A"} | ${squareFootage ? squareFootage + "sqft" : "?"} | $${estimatedValue.toLocaleString()} | ${address || "No addr"}`;
-
     sendSMS(JOSEPH_PHONE, josephMsg).catch(console.error);
 
-    // 2. Auto-confirm to the customer
+    // 2. Auto-confirm to the customer via SMS
     const firstName = name.split(" ")[0];
     const customerMsg = `Hi ${firstName}, Golden State Epoxy Floors got your quote request! Joseph will call you shortly. Questions? (925) 518-2985`;
-
-    // Clean phone number for Twilio (needs +1 format)
     const cleanPhone = phone.replace(/[^0-9]/g, "");
     const customerPhone = cleanPhone.length === 10 ? "+1" + cleanPhone : 
                           cleanPhone.length === 11 && cleanPhone.startsWith("1") ? "+" + cleanPhone : phone;
     sendSMS(customerPhone, customerMsg).catch(console.error);
+
+    // 3. Send email notification to Joseph (always works, no registration needed)
+    sendEmailNotification({
+      name, email, phone, address, projectType, squareFootage, message, estimatedValue
+    }).catch(console.error);
 
     return NextResponse.json(
       { success: true, message: "Quote request received! We'll be in touch within 24 hours." },
