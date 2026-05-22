@@ -15,7 +15,7 @@ export async function GET() {
     const supabase = getSupabase();
     const { data: deals, error } = await supabase
       .from("deals")
-      .select("*, leads(company_name, industry), lead_scores(tier, total_score)")
+      .select("*, leads(company_name, industry, city, lead_scores(tier, total_score), contacts(full_name, email, phone))")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
@@ -34,8 +34,12 @@ export async function GET() {
       updatedAt: d.updated_at,
       companyName: d.leads?.company_name,
       industry: d.leads?.industry,
-      tier: d.lead_scores?.[0]?.tier ?? d.lead_scores?.tier,
-      totalScore: d.lead_scores?.[0]?.total_score ?? d.lead_scores?.total_score,
+      city: d.leads?.city,
+      contactName: d.leads?.contacts?.[0]?.full_name,
+      contactEmail: d.leads?.contacts?.[0]?.email,
+      contactPhone: d.leads?.contacts?.[0]?.phone,
+      tier: d.leads?.lead_scores?.[0]?.tier ?? null,
+      totalScore: d.leads?.lead_scores?.[0]?.total_score ?? null,
     }));
 
     return NextResponse.json(mapped);

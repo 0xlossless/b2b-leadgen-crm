@@ -171,6 +171,7 @@ export async function POST(request: NextRequest) {
       email: email || null,
       phone: phone,
       is_decision_maker: true,
+      email_verified: email ? true : false,
       created_at: nowDate,
     });
     if (contactError) throw contactError;
