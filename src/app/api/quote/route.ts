@@ -58,7 +58,7 @@ async function sendSMS(to: string, body: string): Promise<boolean> {
 
 // Joseph's phone number for lead notifications
 const JOSEPH_PHONE = process.env.NOTIFY_PHONE || "+19255182985";
-const JOSEPH_EMAIL = "lossless.x000@gmail.com";
+const JOSEPH_EMAIL = "Jag.concrete22@gmail.com";
 
 // ---- Email notification via Resend (or fallback log) ----
 async function sendEmailNotification(lead: {
@@ -101,7 +101,7 @@ async function sendEmailNotification(lead: {
         Authorization: `Bearer ${resendKey}`,
       },
       body: JSON.stringify({
-        from: "Golden State Epoxy Leads <onboarding@resend.dev>",
+        from: "Golden State Epoxy <leads@goldenstateepoxyflooring.com>",
         to: [JOSEPH_EMAIL],
         subject: `🔥 New Quote: ${lead.name} — ${lead.projectType || "Quote Request"} — $${lead.estimatedValue.toLocaleString()}`,
         html: htmlBody,

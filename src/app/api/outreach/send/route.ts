@@ -9,7 +9,7 @@ export const maxDuration = 300; // 5 min for bulk sends
 // Bulk sends enforce a 1-second delay between each email to stay compliant.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FROM_ADDRESS = "Golden State Epoxy Leads <onboarding@resend.dev>";
+const FROM_ADDRESS = "Golden State Epoxy <joseph@goldenstateepoxyflooring.com>";
 const REPLY_TO = ["Jag.concrete22@gmail.com"];
 
 function getSupabase() {
