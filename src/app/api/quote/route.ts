@@ -18,6 +18,47 @@ function getSupabase() {
   );
 }
 
+// ---- Twilio SMS (uses REST API directly, no SDK needed) ----
+async function sendSMS(to: string, body: string): Promise<boolean> {
+  const accountSid = process.env.TWILIO_ACCOUNT_SID;
+  const authToken = process.env.TWILIO_AUTH_TOKEN;
+  const fromNumber = process.env.TWILIO_FROM_NUMBER;
+
+  if (!accountSid || !authToken || !fromNumber) {
+    console.log("[SMS SKIPPED] Twilio not configured:", { accountSid: !!accountSid, authToken: !!authToken, fromNumber: !!fromNumber });
+    return false;
+  }
+
+  try {
+    const response = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          Authorization: "Basic " + btoa(`${accountSid}:${authToken}`),
+        },
+        body: new URLSearchParams({ To: to, From: fromNumber, Body: body }),
+      }
+    );
+
+    const data = await response.json();
+    if (response.ok) {
+      console.log(`[SMS SENT] to ${to}, SID: ${data.sid}`);
+      return true;
+    } else {
+      console.error(`[SMS ERROR] ${data.message}`);
+      return false;
+    }
+  } catch (err) {
+    console.error("[SMS ERROR]", err);
+    return false;
+  }
+}
+
+// Joseph's phone number for lead notifications
+const JOSEPH_PHONE = process.env.NOTIFY_PHONE || "+19255182985";
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: CORS_HEADERS });
 }
@@ -119,6 +160,36 @@ export async function POST(request: NextRequest) {
       metadata,
       created_at: nowDate,
     });
+
+    // ---- SEND SMS NOTIFICATIONS (non-blocking — don't fail the response) ----
+
+    // 1. Notify Joseph about the new hot lead
+    const josephMsg = `🔥 NEW QUOTE REQUEST\n\n` +
+      `👤 ${name}\n` +
+      `📞 ${phone}\n` +
+      `${email ? `📧 ${email}\n` : ""}` +
+      `📍 ${address || "No address"}\n` +
+      `🏠 ${projectType || "Not specified"}\n` +
+      `📐 ${squareFootage ? squareFootage + " sq ft" : "Size TBD"}\n` +
+      `💰 Est. value: $${estimatedValue.toLocaleString()}\n` +
+      `${message ? `\n💬 "${message}"` : ""}\n` +
+      `\nCall them NOW — speed wins jobs! 💪`;
+
+    sendSMS(JOSEPH_PHONE, josephMsg).catch(console.error);
+
+    // 2. Auto-confirm to the customer
+    const firstName = name.split(" ")[0];
+    const customerMsg = `Hi ${firstName}! Thanks for reaching out to Golden State Epoxy Floors. 🙌\n\n` +
+      `We received your quote request and Joseph will personally call you shortly to discuss your project.\n\n` +
+      `In the meantime, feel free to call us at (925) 518-2985.\n\n` +
+      `— Golden State Epoxy Floors\n` +
+      `California's Metallic Flooring Artisans`;
+
+    // Clean phone number for Twilio (needs +1 format)
+    const cleanPhone = phone.replace(/[^0-9]/g, "");
+    const customerPhone = cleanPhone.length === 10 ? "+1" + cleanPhone : 
+                          cleanPhone.length === 11 && cleanPhone.startsWith("1") ? "+" + cleanPhone : phone;
+    sendSMS(customerPhone, customerMsg).catch(console.error);
 
     return NextResponse.json(
       { success: true, message: "Quote request received! We'll be in touch within 24 hours." },
