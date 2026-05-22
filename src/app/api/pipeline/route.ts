@@ -13,12 +13,20 @@ function getSupabase() {
 export async function GET() {
   try {
     const supabase = getSupabase();
+    
+    // Debug: check if service role key is being used
+    const isServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
     const { data: deals, error } = await supabase
       .from("deals")
       .select("*, leads(company_name, industry, city, contacts(full_name, email, phone))")
       .order("created_at", { ascending: false });
 
     if (error) throw error;
+
+    // Debug: log raw stage values
+    console.log("GET pipeline - raw deal stages:", (deals || []).map(d => ({ id: d.id, stage: d.stage, updated_at: d.updated_at })));
+    console.log("GET pipeline - using service role key:", isServiceRole);
 
     // Fetch lead_scores separately (FK relationship may not exist)
     const leadIds = (deals || []).map(d => d.lead_id).filter(Boolean);
