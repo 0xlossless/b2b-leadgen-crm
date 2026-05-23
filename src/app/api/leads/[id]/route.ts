@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
 
 // ─── GET /api/leads/[id] ─────────────────────────────────
 export async function GET(
@@ -10,6 +17,7 @@ export async function GET(
 ) {
   try {
     const { id } = params;
+    const supabase = getSupabase();
 
     const { data: lead, error: leadError } = await supabase
       .from("leads")
@@ -135,8 +143,7 @@ export async function PATCH(
   try {
     const { id } = params;
     const body = await request.json();
-
-    // Check lead exists
+    const supabase = getSupabase();
     const { data: existing, error: existError } = await supabase
       .from("leads")
       .select("id")
@@ -234,6 +241,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = params;
+    const supabase = getSupabase();
 
     const { data: existing, error: existError } = await supabase
       .from("leads")

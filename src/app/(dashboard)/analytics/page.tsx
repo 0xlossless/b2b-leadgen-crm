@@ -1,4 +1,4 @@
-import { supabase } from "@/lib/db";
+import { createClient } from "@supabase/supabase-js";
 import {
   PIPELINE_STAGES,
   STAGE_LABELS,
@@ -21,7 +21,15 @@ import { MonthlyDealsChart } from "@/components/analytics/monthly-deals-chart";
 
 export const dynamic = "force-dynamic";
 
+function getSupabase() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+}
+
 async function getAnalyticsData() {
+  const supabase = getSupabase();
   // Total deals
   const { data: allDealsData } = await supabase.from("deals").select("*");
   const allDeals = allDealsData ?? [];

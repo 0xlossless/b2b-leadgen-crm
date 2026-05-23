@@ -32,6 +32,7 @@ interface Lead {
   scoreTier: string | null;
   dealStage: string | null;
   dealValue: number | null;
+  qualificationTier: string | null;
   lastActivity: {
     type: string;
     description: string;

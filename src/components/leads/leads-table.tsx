@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScoreBadge } from "./score-badge";
 import { StageBadge } from "./stage-badge";
+import { QualificationBadge } from "./qualification-badge";
 import { cn } from "@/lib/utils";
 
 interface Lead {
@@ -37,6 +38,7 @@ interface Lead {
   scoreTier: string | null;
   dealStage: string | null;
   dealValue: number | null;
+  qualificationTier?: string | null;
   lastActivity: {
     type: string;
     description: string;
@@ -84,6 +86,7 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: Leads
               Score
               <SortIndicator column="score" />
             </TableHead>
+            <TableHead className="text-zinc-400">Qualification</TableHead>
             <TableHead className="text-zinc-400">Stage</TableHead>
             <TableHead className="text-zinc-400">Source</TableHead>
             <TableHead
@@ -93,7 +96,6 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: Leads
               Last Activity
               <SortIndicator column="createdAt" />
             </TableHead>
-            <TableHead className="text-zinc-400">Email</TableHead>
             <TableHead className="text-zinc-400 w-[50px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -152,6 +154,11 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: Leads
                   <ScoreBadge score={lead.score} tier={lead.scoreTier} />
                 </TableCell>
 
+                {/* Qualification */}
+                <TableCell>
+                  <QualificationBadge tier={lead.qualificationTier} />
+                </TableCell>
+
                 {/* Stage */}
                 <TableCell>
                   <StageBadge stage={lead.dealStage} />
@@ -167,23 +174,6 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: Leads
                 {/* Last Activity */}
                 <TableCell className="text-zinc-500 text-sm">
                   {relativeTime}
-                </TableCell>
-
-                {/* Email Status */}
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        "h-2 w-2 rounded-full",
-                        lead.emailVerified
-                          ? "bg-green-400"
-                          : "bg-zinc-600"
-                      )}
-                    />
-                    <span className="text-xs text-zinc-500">
-                      {lead.emailVerified ? "Verified" : "Unverified"}
-                    </span>
-                  </div>
                 </TableCell>
 
                 {/* Actions */}

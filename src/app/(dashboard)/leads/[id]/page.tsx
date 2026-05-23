@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import { CopyButton } from "@/components/copy-button";
 import { EmailComposer } from "@/components/leads/email-composer";
 import { AiSummary } from "@/components/leads/ai-summary";
+import { QualifyLeadCard } from "@/components/leads/qualify-lead-card";
 import { formatDistanceToNow, format } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +132,11 @@ export default async function LeadProfilePage({ params }: { params: { id: string
             )}
           </div>
           <div className="space-y-6">
+            <QualifyLeadCard
+              leadId={lead.id}
+              currentTier={score?.disqualify_reason ?? null}
+              currentScore={score?.total_score ?? null}
+            />
             {deal && (
               <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader><CardTitle className="flex items-center gap-2 text-zinc-100 text-base"><DollarSign className="h-5 w-5 text-emerald-500" />Deal</CardTitle></CardHeader>
