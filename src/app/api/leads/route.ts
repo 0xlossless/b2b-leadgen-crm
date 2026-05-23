@@ -118,11 +118,17 @@ export async function POST(request: NextRequest) {
     if (error) throw error;
 
     // Create default deal
+    const sqft = body.squareFootage ? parseInt(body.squareFootage) : 0;
+    const coating = body.coatingType || null; // "Flaked Epoxy" or "Metallic Epoxy"
+    const rate = coating === "Metallic Epoxy" ? 10 : 8;
+    const estimatedValue = sqft > 0 ? Math.min(Math.max(sqft * rate, 3000), 100000) : 0;
+
+    const dealId = ulid();
     await supabase.from("deals").insert({
-      id: ulid(),
+      id: dealId,
       lead_id: newLead.id,
       stage: "new_lead",
-      deal_value: "0",
+      deal_value: estimatedValue.toString(),
       created_at: nowDate,
       updated_at: nowDate,
     });
@@ -135,6 +141,22 @@ export async function POST(request: NextRequest) {
         full_name: body.contactName || "Unknown",
         email: body.contactEmail || null,
         phone: body.contactPhone || null,
+        created_at: nowDate,
+      });
+    }
+
+    // Log activity if sqft/coating provided
+    if (sqft > 0 || coating) {
+      const parts = [];
+      if (coating) parts.push(coating);
+      if (sqft > 0) parts.push(`${sqft} sq ft`);
+      await supabase.from("activities").insert({
+        id: ulid(),
+        lead_id: newLead.id,
+        deal_id: dealId,
+        type: "note",
+        description: `Lead added manually — ${parts.join(", ")}. Estimated value: $${estimatedValue.toLocaleString()}`,
+        metadata: JSON.stringify({ coatingType: coating, squareFootage: sqft, estimatedValue }),
         created_at: nowDate,
       });
     }

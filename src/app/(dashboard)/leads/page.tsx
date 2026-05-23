@@ -24,6 +24,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ScheduleQuoteDialog } from "@/components/leads/schedule-quote-dialog";
 
 interface Lead {
@@ -89,6 +96,8 @@ export default function LeadDatabasePage() {
     contactName: "",
     contactEmail: "",
     contactPhone: "",
+    squareFootage: "",
+    coatingType: "",
   });
   const [scheduleQuoteLead, setScheduleQuoteLead] = useState<Lead | null>(null);
 
@@ -231,11 +240,13 @@ export default function LeadDatabasePage() {
           contactName: newLead.contactName || undefined,
           contactEmail: newLead.contactEmail || undefined,
           contactPhone: newLead.contactPhone || undefined,
+          squareFootage: newLead.squareFootage || undefined,
+          coatingType: newLead.coatingType || undefined,
         }),
       });
       if (response.ok) {
         setShowAddLead(false);
-        setNewLead({ companyName: "", website: "", industry: "", city: "", state: "", contactName: "", contactEmail: "", contactPhone: "" });
+        setNewLead({ companyName: "", website: "", industry: "", city: "", state: "", contactName: "", contactEmail: "", contactPhone: "", squareFootage: "", coatingType: "" });
         fetchLeads();
       } else {
         console.error("Failed to add lead");
@@ -431,6 +442,33 @@ export default function LeadDatabasePage() {
                   value={newLead.state}
                   onChange={(e) => setNewLead({ ...newLead, state: e.target.value })}
                 />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">Square Footage</Label>
+                <Input
+                  type="number"
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="e.g. 500"
+                  value={newLead.squareFootage}
+                  onChange={(e) => setNewLead({ ...newLead, squareFootage: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">Floor Type</Label>
+                <Select
+                  value={newLead.coatingType}
+                  onValueChange={(val) => setNewLead({ ...newLead, coatingType: val })}
+                >
+                  <SelectTrigger className="bg-zinc-800 border-zinc-700 text-zinc-100">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-zinc-800 border-zinc-700">
+                    <SelectItem value="Flaked Epoxy" className="text-zinc-100">Flaked Epoxy</SelectItem>
+                    <SelectItem value="Metallic Epoxy" className="text-zinc-100">Metallic Epoxy</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="border-t border-zinc-800 pt-4">
