@@ -63,7 +63,7 @@ const JOSEPH_EMAIL = "Jag.concrete22@gmail.com";
 // ---- Email notification via Resend (or fallback log) ----
 async function sendEmailNotification(lead: {
   name: string; email?: string; phone: string; address?: string;
-  projectType?: string; squareFootage?: string; message?: string; estimatedValue: number;
+  projectType?: string; coatingType?: string; squareFootage?: string; message?: string; estimatedValue: number;
 }): Promise<boolean> {
   const resendKey = process.env.RESEND_API_KEY;
   
@@ -82,6 +82,7 @@ async function sendEmailNotification(lead: {
         ${lead.email ? `<tr><td style="padding:8px 0;color:#C9A84C;">Email</td><td style="padding:8px 0;">${lead.email}</td></tr>` : ""}
         ${lead.address ? `<tr><td style="padding:8px 0;color:#C9A84C;">Address</td><td style="padding:8px 0;">${lead.address}</td></tr>` : ""}
         <tr><td style="padding:8px 0;color:#C9A84C;">Project Type</td><td style="padding:8px 0;">${lead.projectType || "Not specified"}</td></tr>
+        <tr><td style="padding:8px 0;color:#C9A84C;">Coating Type</td><td style="padding:8px 0;font-weight:bold;">${lead.coatingType || "Not specified"}</td></tr>
         <tr><td style="padding:8px 0;color:#C9A84C;">Square Footage</td><td style="padding:8px 0;">${lead.squareFootage || "Not specified"}</td></tr>
         <tr><td style="padding:8px 0;color:#C9A84C;">Est. Value</td><td style="padding:8px 0;font-weight:bold;color:#C9A84C;">$${lead.estimatedValue.toLocaleString()}</td></tr>
       </table>
@@ -133,7 +134,7 @@ export async function POST(request: NextRequest) {
     const nowDate = new Date().toISOString();
 
     // Validate required fields
-    const { name, email, phone, address, projectType, squareFootage, message } = body;
+    const { name, email, phone, address, projectType, coatingType, squareFootage, message } = body;
     if (!name || !phone) {
       return NextResponse.json(
         { error: "Name and phone are required" },
@@ -177,7 +178,7 @@ export async function POST(request: NextRequest) {
     if (contactError) throw contactError;
 
     // Create deal in pipeline (new_lead stage)
-    const estimatedValue = estimateDealValue(squareFootage);
+    const estimatedValue = estimateDealValue(squareFootage, coatingType);
     const { error: dealError } = await supabase.from("deals").insert({
       id: ulid(),
       lead_id: leadId,
@@ -211,6 +212,7 @@ export async function POST(request: NextRequest) {
     // Log the activity
     const metadata = JSON.stringify({
       projectType: projectType || "Not specified",
+      coatingType: coatingType || "Not specified",
       squareFootage: squareFootage || "Not specified",
       address: address || "Not provided",
       message: message || "No message",
@@ -228,7 +230,7 @@ export async function POST(request: NextRequest) {
     // ---- SEND NOTIFICATIONS (non-blocking) ----
 
     // 1. Notify Joseph via SMS (requires Twilio A2P registration)
-    const josephMsg = `NEW LEAD: ${name} | ${phone} | ${projectType || "N/A"} | ${squareFootage ? squareFootage + "sqft" : "?"} | $${estimatedValue.toLocaleString()} | ${address || "No addr"}`;
+    const josephMsg = `NEW LEAD: ${name} | ${phone} | ${coatingType || "?"} | ${projectType || "N/A"} | ${squareFootage ? squareFootage + "sqft" : "?"} | $${estimatedValue.toLocaleString()} | ${address || "No addr"}`;
     sendSMS(JOSEPH_PHONE, josephMsg).catch(console.error);
 
     // 2. Auto-confirm to the customer via SMS
@@ -241,7 +243,7 @@ export async function POST(request: NextRequest) {
 
     // 3. Send email notification to Joseph (always works, no registration needed)
     sendEmailNotification({
-      name, email, phone, address, projectType, squareFootage, message, estimatedValue
+      name, email, phone, address, projectType, coatingType, squareFootage, message, estimatedValue
     }).catch(console.error);
 
     return NextResponse.json(
