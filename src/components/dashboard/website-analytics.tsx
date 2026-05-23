@@ -474,7 +474,7 @@ export function WebsiteAnalytics() {
                 Website Analytics
               </h2>
               <p className="text-sm text-zinc-500">
-                goldenstateepoxyfloors.com — Last 30 days
+                goldenstateepoxyflooring.com — Last 30 days
               </p>
             </div>
           </div>
