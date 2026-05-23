@@ -130,7 +130,7 @@ export default async function CommandCenter() {
   return (
     <div className="min-h-screen bg-zinc-950 p-6 lg:p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-zinc-100">Golden State Epoxy — Command Center</h1>
+        <h1 className="text-2xl font-bold text-zinc-100">Golden State Epoxy</h1>
         <p className="text-sm text-zinc-400 mt-1">Pipeline overview for Golden State Epoxy Flooring</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
