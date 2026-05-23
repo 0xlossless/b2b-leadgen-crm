@@ -2,13 +2,26 @@ import { NextResponse } from "next/server";
 import postgres from "postgres";
 
 export async function POST() {
-  const databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
     return NextResponse.json(
       { success: false, error: "DATABASE_URL not configured" },
       { status: 500 }
     );
+  }
+
+  // Supabase direct connection may not work from serverless — use pooler
+  // Replace db.xxx.supabase.co with aws-0-xxx.pooler.supabase.com:6543 if needed
+  if (databaseUrl.includes("db.") && databaseUrl.includes(".supabase.co")) {
+    // Extract the project ref
+    const match = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
+    if (match) {
+      // Use the transaction pooler endpoint instead
+      databaseUrl = databaseUrl
+        .replace(`db.${match[1]}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
+        .replace(`db.${match[1]}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`);
+    }
   }
 
   const sql = postgres(databaseUrl, { ssl: "require" });
