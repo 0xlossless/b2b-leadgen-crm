@@ -58,6 +58,60 @@ async function sendSMS(to: string, body: string): Promise<boolean> {
 
 // Joseph's phone number for lead notifications
 const JOSEPH_PHONE = process.env.NOTIFY_PHONE || "+19255182985";
+
+// ---- Discord Webhook Notification ----
+async function sendDiscordNotification(lead: {
+  name: string; email?: string; phone: string; address?: string;
+  projectType?: string; coatingType?: string; squareFootage?: string; message?: string; estimatedValue: number;
+}): Promise<boolean> {
+  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
+  if (!webhookUrl) {
+    console.log("[DISCORD SKIPPED] DISCORD_WEBHOOK_URL not configured");
+    return false;
+  }
+
+  const embed = {
+    title: "🔥 NEW LEAD — Quote Request",
+    color: 0xC9A84C, // Gold
+    fields: [
+      { name: "👤 Name", value: lead.name, inline: true },
+      { name: "📞 Phone", value: lead.phone, inline: true },
+      { name: "💰 Est. Value", value: `$${lead.estimatedValue.toLocaleString()}`, inline: true },
+      { name: "🏠 Project", value: lead.projectType || "Not specified", inline: true },
+      { name: "✨ Coating", value: lead.coatingType || "Not specified", inline: true },
+      { name: "📐 Sq Ft", value: lead.squareFootage || "Not specified", inline: true },
+      ...(lead.email ? [{ name: "📧 Email", value: lead.email, inline: true }] : []),
+      ...(lead.address ? [{ name: "📍 Address", value: lead.address, inline: false }] : []),
+      ...(lead.message ? [{ name: "💬 Message", value: lead.message, inline: false }] : []),
+    ],
+    footer: { text: "Golden State Epoxy Floors — Website Lead" },
+    timestamp: new Date().toISOString(),
+  };
+
+  try {
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: "GSE Lead Bot",
+        avatar_url: "https://goldenstateepoxyfloors.com/favicon.ico",
+        content: "📲 **New quote request just came in! Call them ASAP.**",
+        embeds: [embed],
+      }),
+    });
+
+    if (response.ok) {
+      console.log("[DISCORD SENT] Lead notification posted");
+      return true;
+    } else {
+      console.error(`[DISCORD ERROR] ${response.status}: ${await response.text()}`);
+      return false;
+    }
+  } catch (err) {
+    console.error("[DISCORD ERROR]", err);
+    return false;
+  }
+}
 const JOSEPH_EMAIL = "Jag.concrete22@gmail.com";
 
 // ---- Email notification via Resend (or fallback log) ----
@@ -229,7 +283,7 @@ export async function POST(request: NextRequest) {
 
     // ---- SEND NOTIFICATIONS (non-blocking) ----
 
-    // 1. Notify Joseph via SMS (requires Twilio A2P registration)
+    // 1. Notify Joseph via SMS
     const josephMsg = `NEW LEAD: ${name} | ${phone} | ${coatingType || "?"} | ${projectType || "N/A"} | ${squareFootage ? squareFootage + "sqft" : "?"} | $${estimatedValue.toLocaleString()} | ${address || "No addr"}`;
     sendSMS(JOSEPH_PHONE, josephMsg).catch(console.error);
 
@@ -243,6 +297,11 @@ export async function POST(request: NextRequest) {
 
     // 3. Send email notification to Joseph (always works, no registration needed)
     sendEmailNotification({
+      name, email, phone, address, projectType, coatingType, squareFootage, message, estimatedValue
+    }).catch(console.error);
+
+    // 4. Send Discord notification via webhook
+    sendDiscordNotification({
       name, email, phone, address, projectType, coatingType, squareFootage, message, estimatedValue
     }).catch(console.error);
 
