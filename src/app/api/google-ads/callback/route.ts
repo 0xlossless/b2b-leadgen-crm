@@ -108,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     if (Array.isArray(existing) && existing.length > 0) {
       // Update existing row
-      await supaFetch(`google_ads_tokens?id=eq.${existing[0].id}`, {
+      const updateRes = await supaFetch(`google_ads_tokens?id=eq.${existing[0].id}`, {
         method: "PATCH",
         body: JSON.stringify({
           access_token,
@@ -118,9 +118,13 @@ export async function GET(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }),
       });
+      if (!updateRes.ok) {
+        const errBody = await updateRes.text();
+        console.error("Failed to update google_ads_tokens:", errBody);
+      }
     } else {
       // Insert new row
-      await supaFetch("google_ads_tokens", {
+      const insertRes = await supaFetch("google_ads_tokens", {
         method: "POST",
         body: JSON.stringify({
           access_token,
@@ -131,6 +135,14 @@ export async function GET(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }),
       });
+      if (!insertRes.ok) {
+        const errBody = await insertRes.text();
+        console.error("Failed to insert google_ads_tokens:", errBody);
+        // Table might not exist — try to give useful redirect
+        return NextResponse.redirect(
+          `${getBaseUrl()}/marketing?error=auth_failed&reason=db_error`
+        );
+      }
     }
 
     // Clear the CSRF cookie and redirect to success

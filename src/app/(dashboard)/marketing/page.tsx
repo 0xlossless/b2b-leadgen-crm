@@ -920,7 +920,23 @@ function AnalyticsTab({ googleAdsConnected }: { googleAdsConnected: boolean }) {
       setLoadingAnalytics(true);
       fetch("/api/google-ads/analytics")
         .then(r => r.ok ? r.json() : null)
-        .then(data => { if (data) setGoogleAnalytics(data); })
+        .then(data => {
+          if (data && data.source !== "not_connected") {
+            // Map the nested API response to the flat GoogleAdsAnalytics shape
+            const s = data.summary || {};
+            setGoogleAnalytics({
+              impressions: Number(s.totalImpressions ?? 0),
+              clicks: Number(s.totalClicks ?? 0),
+              conversions: Number(s.totalConversions ?? 0),
+              cost: Number(s.totalSpend ?? 0),
+              ctr: Number(s.ctr ?? 0),
+              avgCpc: Number(s.averageCpc ?? 0),
+              dateRange: data.period
+                ? `${data.period.start || ""} — ${data.period.end || ""}`
+                : "",
+            });
+          }
+        })
         .catch(() => {})
         .finally(() => setLoadingAnalytics(false));
     }
@@ -998,27 +1014,27 @@ function AnalyticsTab({ googleAdsConnected }: { googleAdsConnected: boolean }) {
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.impressions)}</p>
+                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.impressions ?? 0)}</p>
                 <p className="text-xs text-zinc-500">Impressions</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.clicks)}</p>
+                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.clicks ?? 0)}</p>
                 <p className="text-xs text-zinc-500">Clicks</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-amber-400">{googleAnalytics.ctr.toFixed(2)}%</p>
+                <p className="text-lg font-bold text-amber-400">{(googleAnalytics.ctr ?? 0).toFixed(2)}%</p>
                 <p className="text-xs text-zinc-500">CTR</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-foreground">{fmtCurrency(googleAnalytics.avgCpc)}</p>
+                <p className="text-lg font-bold text-foreground">{fmtCurrency(googleAnalytics.avgCpc ?? 0)}</p>
                 <p className="text-xs text-zinc-500">Avg CPC</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-green-400">{fmt(googleAnalytics.conversions)}</p>
+                <p className="text-lg font-bold text-green-400">{fmt(googleAnalytics.conversions ?? 0)}</p>
                 <p className="text-xs text-zinc-500">Conversions</p>
               </div>
               <div className="text-center p-3 rounded-lg bg-zinc-900/50">
-                <p className="text-lg font-bold text-red-400">{fmtCurrency(googleAnalytics.cost)}</p>
+                <p className="text-lg font-bold text-red-400">{fmtCurrency(googleAnalytics.cost ?? 0)}</p>
                 <p className="text-xs text-zinc-500">Total Cost</p>
               </div>
             </div>
