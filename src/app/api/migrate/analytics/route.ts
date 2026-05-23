@@ -1,115 +1,112 @@
 import { NextResponse } from "next/server";
-import postgres from "postgres";
 
 export async function POST() {
-  let databaseUrl = process.env.DATABASE_URL;
-  
-  if (!databaseUrl) {
-    return NextResponse.json(
-      { success: false, error: "DATABASE_URL not configured" },
-      { status: 500 }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!supabaseUrl || !serviceKey) {
+    return NextResponse.json({ success: false, error: "Missing env vars" }, { status: 500 });
+  }
+
+  const sql = `
+    CREATE TABLE IF NOT EXISTS page_views (
+      id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+      session_id text NOT NULL,
+      page_path text NOT NULL,
+      page_title text,
+      referrer text,
+      user_agent text,
+      screen_width integer,
+      screen_height integer,
+      device_type text DEFAULT 'desktop',
+      browser text,
+      os text,
+      country text,
+      city text,
+      utm_source text,
+      utm_medium text,
+      utm_campaign text,
+      duration_seconds integer DEFAULT 0,
+      is_bounce boolean DEFAULT true,
+      created_at timestamptz DEFAULT now()
     );
+    CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at);
+    CREATE INDEX IF NOT EXISTS idx_page_views_session_id ON page_views(session_id);
+    CREATE INDEX IF NOT EXISTS idx_page_views_page_path ON page_views(page_path);
+  `;
+
+  // Extract project ref from Supabase URL
+  const refMatch = supabaseUrl.match(/https:\/\/([a-z]+)\.supabase\.co/);
+  const ref = refMatch ? refMatch[1] : null;
+
+  // Extract DB password from DATABASE_URL for direct connection info
+  let dbPassword = '';
+  if (databaseUrl) {
+    const pwMatch = databaseUrl.match(/:([^@]+)@/);
+    if (pwMatch) dbPassword = pwMatch[1];
   }
 
-  // Debug: extract host info before any transformations
-  function safeParseUrl(u: string) {
-    return new URL(u.replace(/^postgres(ql)?:\/\//, 'http://'));
-  }
-  
-  let origHost = '';
+  const errors: string[] = [];
+
+  // Method 1: Try pg-meta query endpoint (Supabase internal)
   try {
-    origHost = safeParseUrl(databaseUrl).hostname;
-  } catch { origHost = 'parse-error'; }
-
-  // Supabase direct connection may not work from serverless — use pooler
-  // The pooler URL format is: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-  if (databaseUrl.includes(".supabase.co") && !databaseUrl.includes("pooler.supabase.com")) {
-    // Extract the project ref from the URL (could be db.REF.supabase.co or just REF.supabase.co)
-    const refMatch = databaseUrl.match(/(?:db\.)?([a-z]+)\.supabase\.co/);
-    if (refMatch) {
-      const ref = refMatch[1];
-      // Replace direct host with pooler, add ref to username
-      databaseUrl = databaseUrl
-        .replace(/postgres(ql)?:\/\/postgres:/, `postgresql://postgres.${ref}:`)
-        .replace(/[a-z.]*\.supabase\.co:\d+/, `aws-0-us-west-1.pooler.supabase.com:6543`)
-        .replace(/[a-z.]*\.supabase\.co/, `aws-0-us-west-1.pooler.supabase.com:6543`);
+    const resp = await fetch(`${supabaseUrl}/rest/v1/rpc/query`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      body: JSON.stringify({ query: sql }),
+    });
+    if (resp.ok) {
+      return NextResponse.json({ success: true, method: "rpc-query" });
     }
+    errors.push(`rpc/query: ${resp.status} ${await resp.text()}`);
+  } catch (e: any) {
+    errors.push(`rpc/query: ${e.message}`);
   }
 
-  // Debug: extract host info after transformations
-  let debugInfo: Record<string, string> = { originalHost: origHost };
+  // Method 2: Try using Supabase Management API (requires access token, not service key)
+  // This won't work without a PAT, but let's try
+
+  // Method 3: Use postgres.js with the DATABASE_URL directly (dynamic import to avoid crash)
   try {
-    const newUrlObj = safeParseUrl(databaseUrl);
-    debugInfo = { 
-      originalHost: origHost, 
-      newHost: newUrlObj.hostname, 
-      newPort: newUrlObj.port, 
-      newUser: newUrlObj.username 
-    };
-  } catch { debugInfo.parseError = 'true'; }
-
-  const sql = postgres(databaseUrl, { ssl: "require" });
-
-  try {
-    // Create page_views table
-    await sql`
-      CREATE TABLE IF NOT EXISTS page_views (
-        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-        session_id text NOT NULL,
-        page_path text NOT NULL,
-        page_title text,
-        referrer text,
-        user_agent text,
-        screen_width integer,
-        screen_height integer,
-        device_type text DEFAULT 'desktop',
-        browser text,
-        os text,
-        country text,
-        city text,
-        utm_source text,
-        utm_medium text,
-        utm_campaign text,
-        duration_seconds integer DEFAULT 0,
-        is_bounce boolean DEFAULT true,
-        created_at timestamptz DEFAULT now()
-      )
-    `;
-
-    // Create indexes
-    await sql`CREATE INDEX IF NOT EXISTS idx_page_views_created_at ON page_views(created_at)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_page_views_session_id ON page_views(session_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_page_views_page_path ON page_views(page_path)`;
-
-    // Enable RLS but allow inserts from anon (for the tracking script)
-    await sql`ALTER TABLE page_views ENABLE ROW LEVEL SECURITY`;
+    const pgModule = await import("postgres");
+    const pgSql = pgModule.default(databaseUrl!, { 
+      ssl: { rejectUnauthorized: false },
+      connect_timeout: 10,
+    });
     
-    // Policy: allow inserts from any source (tracking is public)
-    await sql`
+    await pgSql.unsafe(sql);
+    
+    // Also set up RLS
+    await pgSql.unsafe(`
+      ALTER TABLE page_views ENABLE ROW LEVEL SECURITY;
       DO $$ BEGIN
         CREATE POLICY "Allow public inserts" ON page_views FOR INSERT WITH CHECK (true);
       EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
-    `;
-    
-    // Policy: allow reads with service role only
-    await sql`
+      END $$;
       DO $$ BEGIN
         CREATE POLICY "Allow service role reads" ON page_views FOR SELECT USING (true);
       EXCEPTION WHEN duplicate_object THEN NULL;
-      END $$
-    `;
-
-    await sql.end();
-
-    return NextResponse.json({
-      success: true,
-      message: "page_views table created with indexes and RLS policies.",
-      debug: debugInfo,
-    });
-  } catch (e: unknown) {
-    await sql.end();
-    const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, error: msg, debug: debugInfo }, { status: 500 });
+      END $$;
+    `);
+    
+    await pgSql.end();
+    return NextResponse.json({ success: true, method: "postgres-direct" });
+  } catch (e: any) {
+    errors.push(`postgres-direct: ${e.message}`);
   }
+
+  // If all methods fail, return the SQL for manual execution
+  return NextResponse.json({
+    success: false,
+    message: "Auto-migration failed. Please run this SQL in the Supabase SQL Editor (supabase.com/dashboard):",
+    sql: sql.trim(),
+    errors,
+    ref,
+    dashboardUrl: ref ? `https://supabase.com/dashboard/project/${ref}/sql/new` : null,
+  });
 }
