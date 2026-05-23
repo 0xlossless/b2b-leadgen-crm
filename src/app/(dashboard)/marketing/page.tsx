@@ -183,7 +183,11 @@ function CampaignsTab({ googleAdsConnected, googleCustomerId }: { googleAdsConne
 
   useEffect(() => {
     fetch("/api/marketing/campaigns").then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.campaigns) setCampaigns(data.campaigns); })
+      .then(data => {
+        // API returns a plain array, not { campaigns: [...] }
+        const campaigns = Array.isArray(data) ? data : data?.campaigns;
+        if (campaigns) setCampaigns(campaigns);
+      })
       .catch(() => {});
   }, []);
 
