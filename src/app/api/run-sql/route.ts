@@ -79,13 +79,13 @@ export async function GET() {
     // If using direct connection (db.xxx.supabase.co), try pooler instead
     const directMatch = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
     if (directMatch) {
-      databaseUrl = databaseUrl.replace(
-        `db.${directMatch[1]}.supabase.co:5432`,
-        `aws-0-us-west-1.pooler.supabase.com:6543`
-      ).replace(
-        `db.${directMatch[1]}.supabase.co`,
-        `aws-0-us-west-1.pooler.supabase.com:6543`
-      );
+      const ref = directMatch[1];
+      // Pooler requires username to be postgres.{ref}
+      databaseUrl = databaseUrl
+        .replace(`db.${ref}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
+        .replace(`db.${ref}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`)
+        .replace('postgres:', `postgres.${ref}:`)
+        .replace('//postgres@', `//postgres.${ref}@`);
     }
     try {
       const pgModule = await import("postgres");
