@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ScheduleQuoteDialog } from "@/components/leads/schedule-quote-dialog";
 
 interface Lead {
   id: string;
@@ -40,7 +41,7 @@ interface Lead {
   scoreTier: string | null;
   dealStage: string | null;
   dealValue: number | null;
-  qualificationTier: string | null;
+  qualificationTier?: string | null;
   lastActivity: {
     type: string;
     description: string;
@@ -89,6 +90,7 @@ export default function LeadDatabasePage() {
     contactEmail: "",
     contactPhone: "",
   });
+  const [scheduleQuoteLead, setScheduleQuoteLead] = useState<Lead | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -295,6 +297,7 @@ export default function LeadDatabasePage() {
           sortOrder={sortOrder}
           onSort={handleSort}
           onDelete={handleDeleteRequest}
+          onScheduleQuote={(lead) => setScheduleQuoteLead(lead)}
         />
       </div>
 
@@ -470,6 +473,19 @@ export default function LeadDatabasePage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Schedule Quote Dialog */}
+      <ScheduleQuoteDialog
+        open={!!scheduleQuoteLead}
+        onOpenChange={(open) => !open && setScheduleQuoteLead(null)}
+        lead={scheduleQuoteLead ? {
+          id: scheduleQuoteLead.id,
+          companyName: scheduleQuoteLead.companyName,
+          contactName: scheduleQuoteLead.contactName,
+          contactEmail: scheduleQuoteLead.contactEmail,
+          industry: scheduleQuoteLead.industry,
+        } : null}
+      />
     </div>
   );
 }

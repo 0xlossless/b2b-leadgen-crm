@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
-import { ExternalLink, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
+import { ExternalLink, MoreHorizontal, Eye, Pencil, Trash2, CalendarDays } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -52,9 +52,10 @@ interface LeadsTableProps {
   sortOrder: string;
   onSort: (column: string) => void;
   onDelete?: (leadId: string, companyName: string) => void;
+  onScheduleQuote?: (lead: Lead) => void;
 }
 
-export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: LeadsTableProps) {
+export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete, onScheduleQuote }: LeadsTableProps) {
   const router = useRouter();
 
   function SortIndicator({ column }: { column: string }) {
@@ -206,6 +207,17 @@ export function LeadsTable({ leads, sortBy, sortOrder, onSort, onDelete }: Leads
                       >
                         <Pencil className="h-4 w-4 mr-2" />
                         Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onScheduleQuote) {
+                            onScheduleQuote(lead);
+                          }
+                        }}
+                      >
+                        <CalendarDays className="h-4 w-4 mr-2" />
+                        Schedule Quote
                       </DropdownMenuItem>
                       <DropdownMenuItem
                         className="text-red-400"
