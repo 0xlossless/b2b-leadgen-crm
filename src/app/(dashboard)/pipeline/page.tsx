@@ -17,14 +17,23 @@ import {
   PIPELINE_STAGES,
   STAGE_LABELS,
   type PipelineStage,
+  QUALIFICATION_TIERS,
+  type QualificationTier,
 } from "@/lib/db/schema";
 import { Loader2, KanbanSquare } from "lucide-react";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export default function PipelinePage() {
   const [deals, setDeals] = useState<DealCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeDeal, setActiveDeal] = useState<DealCardData | null>(null);
+  const [qualifyDealId, setQualifyDealId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -50,6 +59,7 @@ export default function PipelinePage() {
         contactTitle: null,
         totalScore: d.totalScore ?? 0,
         scoreTier: d.tier ?? "cold",
+        qualificationTier: d.qualificationTier ?? null,
         updatedAt: d.updatedAt ?? d.createdAt,
       }));
       setDeals(allDeals);
@@ -126,6 +136,42 @@ export default function PipelinePage() {
     }
   }
 
+  async function handleQualify(tier: QualificationTier) {
+    if (!qualifyDealId) return;
+    const dealId = qualifyDealId;
+    const mapping = QUALIFICATION_TIERS[tier];
+
+    // Close dialog immediately
+    setQualifyDealId(null);
+
+    // Optimistic update
+    setDeals((prev) =>
+      prev.map((d) => {
+        if (d.id !== dealId) return d;
+        const newStage = (d.stage === "new_lead" || d.stage === "contacted") ? "qualified" : d.stage;
+        return {
+          ...d,
+          totalScore: mapping.score,
+          scoreTier: mapping.tier,
+          qualificationTier: tier,
+          stage: newStage,
+        };
+      })
+    );
+
+    try {
+      await fetch(`/api/pipeline/${dealId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ qualificationTier: tier }),
+      });
+    } catch (err) {
+      console.error("Failed to qualify deal:", err);
+      // Refresh to get correct state
+      fetchDeals();
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-zinc-950">
@@ -169,6 +215,7 @@ export default function PipelinePage() {
                   stage={stage}
                   label={STAGE_LABELS[stage]}
                   deals={dealsByStage(stage)}
+                  onQualify={setQualifyDealId}
                 />
               ))}
             </div>
@@ -184,6 +231,47 @@ export default function PipelinePage() {
         </div>
         <ScrollBar orientation="horizontal" />
       </ScrollArea>
+
+      {/* Qualification Dialog */}
+      <Dialog open={qualifyDealId !== null} onOpenChange={(open) => { if (!open) setQualifyDealId(null); }}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100 text-lg">Qualify Lead</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <button
+              onClick={() => handleQualify("rich")}
+              className="flex items-center gap-4 p-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors text-left"
+            >
+              <span className="text-3xl">💰</span>
+              <div>
+                <p className="font-bold text-emerald-400 text-lg">RICH</p>
+                <p className="text-sm text-zinc-400">High budget, ready to buy</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleQualify("broke")}
+              className="flex items-center gap-4 p-4 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 transition-colors text-left"
+            >
+              <span className="text-3xl">😐</span>
+              <div>
+                <p className="font-bold text-amber-400 text-lg">BROKE</p>
+                <p className="text-sm text-zinc-400">Limited budget, might convert</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleQualify("poor")}
+              className="flex items-center gap-4 p-4 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 transition-colors text-left"
+            >
+              <span className="text-3xl">🚫</span>
+              <div>
+                <p className="font-bold text-red-400 text-lg">POOR</p>
+                <p className="text-sm text-zinc-400">No budget, unlikely to convert</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

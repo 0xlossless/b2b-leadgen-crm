@@ -62,6 +62,7 @@ export async function GET() {
         contactPhone: lead?.contacts?.[0]?.phone,
         tier: score?.tier ?? null,
         totalScore: score?.total_score ?? null,
+        qualificationTier: score?.disqualify_reason ?? null,
       };
     });
 

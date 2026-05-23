@@ -13,6 +13,7 @@ interface KanbanColumnProps {
   stage: PipelineStage;
   label: string;
   deals: DealCardData[];
+  onQualify?: (dealId: string) => void;
 }
 
 function getColumnAccent(stage: PipelineStage): string {
@@ -28,7 +29,7 @@ function getColumnAccent(stage: PipelineStage): string {
   }
 }
 
-export function KanbanColumn({ stage, label, deals }: KanbanColumnProps) {
+export function KanbanColumn({ stage, label, deals, onQualify }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: stage });
 
   const totalValue = deals.reduce((sum, d) => sum + (d.dealValue ?? 0), 0);
@@ -64,7 +65,7 @@ export function KanbanColumn({ stage, label, deals }: KanbanColumnProps) {
           strategy={verticalListSortingStrategy}
         >
           {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} />
+            <DealCard key={deal.id} deal={deal} onQualify={onQualify} />
           ))}
         </SortableContext>
 

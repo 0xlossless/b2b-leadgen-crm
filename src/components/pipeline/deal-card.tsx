@@ -6,6 +6,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Clock, User } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
+import { useRef } from "react";
 
 export interface DealCardData {
   id: string;
@@ -19,11 +20,13 @@ export interface DealCardData {
   contactTitle: string | null;
   totalScore: number;
   scoreTier: string;
+  qualificationTier: string | null;
   updatedAt: string;
 }
 
 interface DealCardProps {
   deal: DealCardData;
+  onQualify?: (dealId: string) => void;
 }
 
 function getTierColor(tier: string) {
@@ -37,7 +40,20 @@ function getTierColor(tier: string) {
   }
 }
 
-export function DealCard({ deal }: DealCardProps) {
+function getQualificationBadge(tier: string | null) {
+  switch (tier) {
+    case "rich":
+      return { emoji: "💰", className: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" };
+    case "broke":
+      return { emoji: "😐", className: "bg-amber-500/20 text-amber-400 border-amber-500/30" };
+    case "poor":
+      return { emoji: "🚫", className: "bg-red-500/20 text-red-400 border-red-500/30" };
+    default:
+      return null;
+  }
+}
+
+export function DealCard({ deal, onQualify }: DealCardProps) {
   const {
     attributes,
     listeners,
@@ -46,6 +62,8 @@ export function DealCard({ deal }: DealCardProps) {
     transition,
     isDragging,
   } = useSortable({ id: deal.id });
+
+  const pointerDownPos = useRef<{ x: number; y: number } | null>(null);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -67,24 +85,54 @@ export function DealCard({ deal }: DealCardProps) {
     }
   })();
 
+  const qualBadge = getQualificationBadge(deal.qualificationTier);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    pointerDownPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!onQualify) return;
+    if (isDragging) return;
+    // Check if pointer moved significantly (drag detection)
+    if (pointerDownPos.current) {
+      const dx = Math.abs(e.clientX - pointerDownPos.current.x);
+      const dy = Math.abs(e.clientY - pointerDownPos.current.y);
+      if (dx > 5 || dy > 5) return; // Was a drag, not a click
+    }
+    onQualify(deal.id);
+  };
+
   return (
     <Card
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
+      onPointerDown={handlePointerDown}
+      onClick={handleClick}
       className="cursor-grab active:cursor-grabbing bg-zinc-800 border-zinc-700 p-3 space-y-2 hover:border-zinc-600 transition-colors"
     >
       <div className="flex items-start justify-between gap-2">
         <p className="font-semibold text-sm text-zinc-100 leading-tight">
           {deal.companyName}
         </p>
-        <Badge
-          variant="outline"
-          className={`text-[10px] px-1.5 py-0 shrink-0 ${getTierColor(deal.scoreTier)}`}
-        >
-          {deal.totalScore}
-        </Badge>
+        <div className="flex items-center gap-1 shrink-0">
+          {qualBadge && (
+            <Badge
+              variant="outline"
+              className={`text-[10px] px-1.5 py-0 ${qualBadge.className}`}
+            >
+              {qualBadge.emoji}
+            </Badge>
+          )}
+          <Badge
+            variant="outline"
+            className={`text-[10px] px-1.5 py-0 ${getTierColor(deal.scoreTier)}`}
+          >
+            {deal.totalScore}
+          </Badge>
+        </div>
       </div>
 
       {deal.contactName && (

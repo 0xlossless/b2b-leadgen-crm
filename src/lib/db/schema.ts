@@ -137,3 +137,13 @@ export const SCORE_TIERS = {
 } as const;
 
 export type ScoreTier = keyof typeof SCORE_TIERS;
+
+// ─── Qualification Tiers (manual lead qualification) ────
+export const QUALIFICATION_TIERS = {
+  rich: { label: "💰 Rich", score: 95, tier: "hot" as ScoreTier, color: "emerald", emoji: "💰", description: "High budget, ready to buy" },
+  broke: { label: "😐 Broke", score: 50, tier: "warm" as ScoreTier, color: "amber", emoji: "😐", description: "Limited budget, might convert" },
+  poor: { label: "🚫 Poor", score: 20, tier: "cold" as ScoreTier, color: "red", emoji: "🚫", description: "No budget, unlikely to convert" },
+} as const;
+
+export type QualificationTier = keyof typeof QUALIFICATION_TIERS;
+
