@@ -640,7 +640,7 @@ function AdCreatorTab() {
       });
       if (res.ok) {
         const data = await res.json();
-        setVariants(prev => prev.map((vr, i) => i === activeVariant ? { ...vr, headline: data.headline, description: data.description, cta: data.cta } : vr));
+        setVariants(prev => prev.map((vr, i) => i === activeVariant ? { ...vr, headline: data.headline, headline2: data.variants?.[0]?.headline || '', headline3: data.variants?.[1]?.headline || '', description: data.description, description2: data.variants?.[0]?.description || '', cta: data.cta } : vr));
       }
     } catch {}
     setGenerating(false);
@@ -1142,9 +1142,9 @@ function AnalyticsTab({ googleAdsConnected }: { googleAdsConnected: boolean }) {
           <CardContent>
             <div className="space-y-2">
               {FUNNEL_DATA.map((step, i) => {
-                const maxVal = FUNNEL_DATA[0].value;
+                const maxVal = FUNNEL_DATA[0]?.value || 1;
                 const pct = (step.value / maxVal) * 100;
-                const convRate = i > 0 ? ((step.value / FUNNEL_DATA[i - 1].value) * 100).toFixed(1) : "100";
+                const convRate = i > 0 && FUNNEL_DATA[i - 1].value > 0 ? ((step.value / FUNNEL_DATA[i - 1].value) * 100).toFixed(1) : '0.0';
                 return (
                   <div key={step.name}>
                     <div className="flex items-center justify-between mb-1">
@@ -1209,6 +1209,8 @@ function MarketingPageInner() {
         if (data?.connected) {
           setGoogleAdsConnected(true);
           setGoogleCustomerId(data.customerId || "");
+          // Auto-refresh the access token to keep it alive
+          fetch("/api/google-ads/token", { method: "POST" }).catch(() => {});
         }
       })
       .catch(() => {})

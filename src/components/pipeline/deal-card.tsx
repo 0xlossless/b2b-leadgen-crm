@@ -106,8 +106,12 @@ export function DealCard({ deal, onQualify }: DealCardProps) {
       ref={setNodeRef}
       style={style}
       {...attributes}
-      {...listeners}
-      onPointerDown={handlePointerDown}
+      onPointerDown={(e: React.PointerEvent) => {
+        pointerDownPos.current = { x: e.clientX, y: e.clientY };
+        // Call dnd-kit's onPointerDown to initiate drag
+        if (listeners?.onPointerDown) (listeners as any).onPointerDown(e);
+      }}
+      onKeyDown={listeners?.onKeyDown as any}
       onClick={handleClick}
       className="cursor-grab active:cursor-grabbing bg-zinc-800 border-zinc-700 p-3 space-y-2 hover:border-zinc-600 transition-colors"
     >

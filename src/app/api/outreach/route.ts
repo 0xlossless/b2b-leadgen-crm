@@ -242,6 +242,9 @@ export async function PATCH(request: NextRequest) {
     }
     meta.status = status;
     meta.updated_at = new Date().toISOString();
+    if (status === "sent" && !meta.sent_at) {
+      meta.sent_at = meta.updated_at;
+    }
 
     // Update activity type to match status
     const typeMap: Record<string, string> = {

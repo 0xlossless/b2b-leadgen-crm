@@ -238,11 +238,16 @@ export default function OutreachPage() {
         return;
       }
 
-      // Create the outreach draft
+      // Create the outreach draft using the AI-generated content
       const outreachRes = await fetch("/api/outreach", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ leadId: lead.id, variant }),
+        body: JSON.stringify({
+          leadId: lead.id,
+          variant,
+          customSubject: emailData.subject,
+          customBody: emailData.body,
+        }),
       });
       const outreachData = await outreachRes.json();
 
