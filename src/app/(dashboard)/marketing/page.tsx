@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Plus, Loader2, Copy, Sparkles, ChevronDown, ChevronRight,
   DollarSign, Eye, MousePointer, Target, TrendingUp, Percent,
-  Filter, LayoutTemplate,
+  Filter, LayoutTemplate, RefreshCw, Link, CheckCircle, Pause, Play,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +49,8 @@ interface Campaign {
   targetLocations: string[];
   targetKeywords: string[];
   adCopy: string;
+  source?: "local" | "google_ads";
+  googleAdsId?: string;
 }
 
 interface AdVariant {
@@ -167,14 +170,28 @@ const emptyVariant = (id: number): AdVariant => ({
   cta: "Get Free Quote", displayUrl: "gsepoxy.com",
 });
 
+// ─── Google Ads Analytics Types ──────────────────────────────
+interface GoogleAdsAnalytics {
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  cost: number;
+  ctr: number;
+  avgCpc: number;
+  dateRange: string;
+}
+
 // ─── Campaign Tab ───────────────────────────────────────────
-function CampaignsTab() {
+function CampaignsTab({ googleAdsConnected, googleCustomerId }: { googleAdsConnected: boolean; googleCustomerId: string }) {
   const [campaigns, setCampaigns] = useState<Campaign[]>(MOCK_CAMPAIGNS);
   const [filterPlatform, setFilterPlatform] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [showNew, setShowNew] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const [launchOnGoogleAds, setLaunchOnGoogleAds] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // New campaign form state
   const [form, setForm] = useState({
@@ -195,6 +212,68 @@ function CampaignsTab() {
     (filterStatus === "all" || c.status === filterStatus)
   );
 
+  const syncFromGoogle = async () => {
+    if (!googleAdsConnected) return;
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/google-ads/campaigns");
+      if (res.ok) {
+        const data = await res.json();
+        const googleCampaigns: Campaign[] = (data.campaigns || []).map((gc: any) => ({
+          id: gc.id || `gads-${Date.now()}-${Math.random()}`,
+          name: gc.name,
+          platform: "google" as Platform,
+          status: (gc.status === "ENABLED" ? "active" : gc.status === "PAUSED" ? "paused" : "draft") as CampaignStatus,
+          type: gc.type || "Search",
+          budget: gc.budget || 0,
+          budgetType: "daily" as const,
+          spend: gc.metrics?.cost || 0,
+          impressions: gc.metrics?.impressions || 0,
+          clicks: gc.metrics?.clicks || 0,
+          conversions: gc.metrics?.conversions || 0,
+          startDate: gc.startDate || "",
+          endDate: gc.endDate || "",
+          targetLocations: gc.targetLocations || [],
+          targetKeywords: gc.targetKeywords || [],
+          adCopy: gc.adCopy || "",
+          source: "google_ads" as const,
+          googleAdsId: gc.id,
+        }));
+        setCampaigns(prev => {
+          const localCampaigns = prev.filter(c => c.source !== "google_ads");
+          const existingGoogleIds = new Set(googleCampaigns.map((gc: Campaign) => gc.googleAdsId));
+          return [...localCampaigns, ...googleCampaigns];
+        });
+      }
+    } catch (err) {
+      console.error("Failed to sync Google Ads campaigns:", err);
+    }
+    setSyncing(false);
+  };
+
+  const toggleGoogleAdsCampaign = async (campaign: Campaign) => {
+    if (!campaign.googleAdsId) return;
+    setTogglingId(campaign.googleAdsId);
+    try {
+      const newStatus = campaign.status === "active" ? "PAUSED" : "ENABLED";
+      const res = await fetch(`/api/google-ads/campaigns/${campaign.googleAdsId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        setCampaigns(prev => prev.map(c =>
+          c.googleAdsId === campaign.googleAdsId
+            ? { ...c, status: newStatus === "ENABLED" ? "active" : "paused" }
+            : c
+        ));
+      }
+    } catch (err) {
+      console.error("Failed to toggle campaign:", err);
+    }
+    setTogglingId(null);
+  };
+
   const handleCreate = () => {
     const newCampaign: Campaign = {
       id: `c${Date.now()}`, name: form.name, platform: form.platform,
@@ -206,7 +285,25 @@ function CampaignsTab() {
       adCopy: form.adCopy,
     };
     setCampaigns(prev => [newCampaign, ...prev]);
+
+    // Also create on Google Ads if checkbox is checked
+    if (launchOnGoogleAds && googleAdsConnected) {
+      fetch("/api/google-ads/campaigns", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: form.name,
+          budget: parseFloat(form.budget) || 0,
+          budgetType: form.budgetType,
+          targetKeywords: form.targetKeywords.split(",").map(k => k.trim()).filter(Boolean),
+          targetLocations: form.targetLocations,
+          adCopy: form.adCopy,
+        }),
+      }).catch(err => console.error("Failed to create Google Ads campaign:", err));
+    }
+
     setShowNew(false);
+    setLaunchOnGoogleAds(false);
     setForm({ name: "", platform: "google", type: "Search", budget: "", budgetType: "total", startDate: "", endDate: "", targetLocations: [], targetKeywords: "", adCopy: "" });
   };
 
@@ -248,7 +345,14 @@ function CampaignsTab() {
             </SelectContent>
           </Select>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex gap-2">
+          {googleAdsConnected && (
+            <Button onClick={syncFromGoogle} disabled={syncing} variant="ghost"
+              className="border border-green-500/30 text-green-400 hover:bg-green-500/10">
+              {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+              Sync from Google
+            </Button>
+          )}
           <Button onClick={() => setShowNew(true)} className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
             <Plus className="h-4 w-4 mr-2" /> New Campaign
           </Button>
@@ -263,6 +367,7 @@ function CampaignsTab() {
               <TableRow className="border-zinc-800 hover:bg-transparent">
                 <TableHead className="text-zinc-400 w-8"></TableHead>
                 <TableHead className="text-zinc-400">Campaign</TableHead>
+                <TableHead className="text-zinc-400">Source</TableHead>
                 <TableHead className="text-zinc-400">Platform</TableHead>
                 <TableHead className="text-zinc-400">Status</TableHead>
                 <TableHead className="text-zinc-400 text-right">Budget</TableHead>
@@ -271,6 +376,7 @@ function CampaignsTab() {
                 <TableHead className="text-zinc-400 text-right">Clicks</TableHead>
                 <TableHead className="text-zinc-400 text-right">CTR</TableHead>
                 <TableHead className="text-zinc-400 text-right">Conversions</TableHead>
+                {googleAdsConnected && <TableHead className="text-zinc-400 text-center">Actions</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -286,6 +392,13 @@ function CampaignsTab() {
                     </TableCell>
                     <TableCell className="font-medium text-foreground">{c.name}</TableCell>
                     <TableCell>
+                      <Badge className={c.source === "google_ads"
+                        ? "bg-blue-500/20 text-blue-400 border-0 text-[10px]"
+                        : "bg-zinc-500/20 text-zinc-400 border-0 text-[10px]"}>
+                        {c.source === "google_ads" ? "Google Ads" : "Local"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
                       <Badge className={`${PLATFORM_CONFIG[c.platform].bg} ${PLATFORM_CONFIG[c.platform].color} border-0`}>
                         {PLATFORM_CONFIG[c.platform].label}
                       </Badge>
@@ -299,10 +412,30 @@ function CampaignsTab() {
                     <TableCell className="text-right text-zinc-300">{fmt(c.clicks)}</TableCell>
                     <TableCell className="text-right text-amber-400">{ctr(c.clicks, c.impressions)}</TableCell>
                     <TableCell className="text-right text-green-400">{c.conversions}</TableCell>
+                    {googleAdsConnected && (
+                      <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+                        {c.source === "google_ads" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={togglingId === c.googleAdsId}
+                            onClick={() => toggleGoogleAdsCampaign(c)}
+                            className={c.status === "active"
+                              ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 h-7 px-2"
+                              : "text-green-400 hover:text-green-300 hover:bg-green-500/10 h-7 px-2"}>
+                            {togglingId === c.googleAdsId
+                              ? <Loader2 className="h-3 w-3 animate-spin" />
+                              : c.status === "active"
+                                ? <><Pause className="h-3 w-3 mr-1" /> Pause</>
+                                : <><Play className="h-3 w-3 mr-1" /> Resume</>}
+                          </Button>
+                        )}
+                      </TableCell>
+                    )}
                   </TableRow>
                   {expanded === c.id && (
                     <TableRow key={`${c.id}-detail`} className="border-zinc-800 bg-zinc-900/30">
-                      <TableCell colSpan={10}>
+                      <TableCell colSpan={12}>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-3">
                           <div>
                             <p className="text-xs text-zinc-500 mb-1">Campaign Type</p>
@@ -342,7 +475,7 @@ function CampaignsTab() {
               ))}
               {filtered.length === 0 && (
                 <TableRow className="border-zinc-800">
-                  <TableCell colSpan={10} className="text-center py-8 text-zinc-500">No campaigns match your filters</TableCell>
+                  <TableCell colSpan={12} className="text-center py-8 text-zinc-500">No campaigns match your filters</TableCell>
                 </TableRow>
               )}
             </TableBody>
@@ -358,6 +491,26 @@ function CampaignsTab() {
             <DialogDescription>Set up a new marketing campaign across any platform.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Google Ads Launch Option */}
+            {googleAdsConnected && (
+              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={launchOnGoogleAds}
+                    onChange={e => setLaunchOnGoogleAds(e.target.checked)}
+                    className="h-4 w-4 rounded border-amber-500 text-amber-500 focus:ring-amber-500 accent-amber-500"
+                  />
+                  <span className="text-sm font-medium text-amber-400">Launch on Google Ads</span>
+                </label>
+                {launchOnGoogleAds && (
+                  <p className="text-xs text-zinc-500 mt-2 ml-7">
+                    ⚡ Campaign will be created as <span className="text-yellow-400 font-medium">PAUSED</span>. Enable it when ready.
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
                 <label className="text-xs text-zinc-400 mb-1 block">Campaign Name</label>
@@ -753,7 +906,21 @@ function AdCreatorTab() {
 }
 
 // ─── Analytics Tab ──────────────────────────────────────────
-function AnalyticsTab() {
+function AnalyticsTab({ googleAdsConnected }: { googleAdsConnected: boolean }) {
+  const [googleAnalytics, setGoogleAnalytics] = useState<GoogleAdsAnalytics | null>(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  useEffect(() => {
+    if (googleAdsConnected) {
+      setLoadingAnalytics(true);
+      fetch("/api/google-ads/analytics")
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data) setGoogleAnalytics(data); })
+        .catch(() => {})
+        .finally(() => setLoadingAnalytics(false));
+    }
+  }, [googleAdsConnected]);
+
   const campaigns = MOCK_CAMPAIGNS;
   const totalSpend = campaigns.reduce((s, c) => s + c.spend, 0);
   const totalImpressions = campaigns.reduce((s, c) => s + c.impressions, 0);
@@ -798,6 +965,62 @@ function AnalyticsTab() {
 
   return (
     <div className="space-y-6">
+      {/* Google Ads Live Data Section */}
+      <div className="flex items-center gap-2 mb-2">
+        <Badge className={googleAdsConnected && googleAnalytics
+          ? "bg-green-500/20 text-green-400 border-green-500/30 animate-pulse"
+          : "bg-zinc-500/20 text-zinc-400 border-zinc-500/30"}>
+          {googleAdsConnected && googleAnalytics ? "● Live Data" : "Demo Data"}
+        </Badge>
+        {googleAdsConnected && !googleAnalytics && loadingAnalytics && (
+          <span className="text-xs text-zinc-500 flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" /> Loading Google Ads data...
+          </span>
+        )}
+      </div>
+
+      {googleAdsConnected && googleAnalytics && (
+        <Card className="border-green-500/20 bg-zinc-950">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm text-green-400">Google Ads — Live Performance</CardTitle>
+              <Badge className="bg-green-500/20 text-green-400 border-0 text-[10px]">LIVE</Badge>
+              {googleAnalytics.dateRange && (
+                <span className="text-xs text-zinc-500 ml-auto">{googleAnalytics.dateRange}</span>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.impressions)}</p>
+                <p className="text-xs text-zinc-500">Impressions</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-foreground">{fmt(googleAnalytics.clicks)}</p>
+                <p className="text-xs text-zinc-500">Clicks</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-amber-400">{googleAnalytics.ctr.toFixed(2)}%</p>
+                <p className="text-xs text-zinc-500">CTR</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-foreground">{fmtCurrency(googleAnalytics.avgCpc)}</p>
+                <p className="text-xs text-zinc-500">Avg CPC</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-green-400">{fmt(googleAnalytics.conversions)}</p>
+                <p className="text-xs text-zinc-500">Conversions</p>
+              </div>
+              <div className="text-center p-3 rounded-lg bg-zinc-900/50">
+                <p className="text-lg font-bold text-red-400">{fmtCurrency(googleAnalytics.cost)}</p>
+                <p className="text-xs text-zinc-500">Total Cost</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* KPI Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {kpis.map(k => (
@@ -965,10 +1188,81 @@ function AnalyticsTab() {
   );
 }
 
-// ─── Main Page ──────────────────────────────────────────────
-export default function MarketingPage() {
+// ─── Main Page Inner (with search params) ────────────────────
+function MarketingPageInner() {
+  const searchParams = useSearchParams();
+  const [googleAdsConnected, setGoogleAdsConnected] = useState(false);
+  const [googleCustomerId, setGoogleCustomerId] = useState("");
+  const [showConnectedToast, setShowConnectedToast] = useState(false);
+  const [checkingConnection, setCheckingConnection] = useState(true);
+
+  // Check Google Ads connection status on mount
+  useEffect(() => {
+    fetch("/api/google-ads/token")
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.connected) {
+          setGoogleAdsConnected(true);
+          setGoogleCustomerId(data.customerId || "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCheckingConnection(false));
+  }, []);
+
+  // Show success toast when redirected from OAuth
+  useEffect(() => {
+    if (searchParams.get("connected") === "true") {
+      setShowConnectedToast(true);
+      setGoogleAdsConnected(true);
+      const timer = setTimeout(() => setShowConnectedToast(false), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
+
   return (
     <div className="p-4 lg:p-6 space-y-6">
+      {/* Success Toast */}
+      {showConnectedToast && (
+        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top-2 fade-in duration-300">
+          <div className="bg-green-500/20 border border-green-500/30 rounded-lg px-4 py-3 flex items-center gap-2 shadow-lg backdrop-blur-sm">
+            <CheckCircle className="h-5 w-5 text-green-400" />
+            <span className="text-sm text-green-400 font-medium">Google Ads connected successfully!</span>
+            <button onClick={() => setShowConnectedToast(false)} className="text-green-400/60 hover:text-green-400 ml-2">✕</button>
+          </div>
+        </div>
+      )}
+
+      {/* Google Ads Connection Banner */}
+      {!checkingConnection && (
+        googleAdsConnected ? (
+          <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg bg-green-500/10 border border-green-500/20">
+            <CheckCircle className="h-4 w-4 text-green-400" />
+            <span className="text-sm text-green-400 font-medium">Google Ads Connected ✓</span>
+            {googleCustomerId && (
+              <Badge className="bg-green-500/20 text-green-400 border-0 text-[10px]">
+                ID: {googleCustomerId}
+              </Badge>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-center gap-3">
+              <Link className="h-5 w-5 text-amber-400" />
+              <div>
+                <p className="text-sm font-medium text-amber-400">Connect your Google Ads account</p>
+                <p className="text-xs text-zinc-500">Sync campaigns, view real analytics, and manage ads directly from your CRM.</p>
+              </div>
+            </div>
+            <Button asChild className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => window.location.href = "/api/google-ads/auth"}>
+              <span>
+                <Link className="h-4 w-4 mr-2 inline" /> Connect Google Ads
+              </span>
+            </Button>
+          </div>
+        )
+      )}
+
       <Tabs defaultValue="campaigns" className="space-y-4">
         <TabsList className="bg-zinc-900 border border-zinc-800">
           <TabsTrigger value="campaigns" className="data-[state=active]:bg-amber-500 data-[state=active]:text-black">
@@ -983,15 +1277,24 @@ export default function MarketingPage() {
         </TabsList>
 
         <TabsContent value="campaigns">
-          <CampaignsTab />
+          <CampaignsTab googleAdsConnected={googleAdsConnected} googleCustomerId={googleCustomerId} />
         </TabsContent>
         <TabsContent value="creator">
           <AdCreatorTab />
         </TabsContent>
         <TabsContent value="analytics">
-          <AnalyticsTab />
+          <AnalyticsTab googleAdsConnected={googleAdsConnected} />
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────
+export default function MarketingPage() {
+  return (
+    <Suspense fallback={<div className="p-4 lg:p-6"><Loader2 className="h-6 w-6 animate-spin text-amber-500" /></div>}>
+      <MarketingPageInner />
+    </Suspense>
   );
 }
