@@ -264,11 +264,13 @@ function extractCity(address: string): string | null {
   return parts[0] || null;
 }
 
-function estimateDealValue(sqft: string | undefined): number {
+function estimateDealValue(sqft: string | undefined, projectType?: string): number {
   if (!sqft) return 3000; // Default min job value
   const num = parseInt(sqft.replace(/[^0-9]/g, ""));
   if (isNaN(num)) return 3000;
-  // Rough estimate: $8-15/sqft for metallic epoxy
-  const estimate = Math.max(3000, num * 10);
+  // Pricing: $8/sqft flaked epoxy, $10/sqft metallic epoxy
+  const isMetallic = projectType?.toLowerCase().includes("metallic");
+  const ratePerSqft = isMetallic ? 10 : 8;
+  const estimate = Math.max(3000, num * ratePerSqft);
   return Math.min(estimate, 100000); // Cap at 100k
 }

@@ -96,7 +96,7 @@ export async function GET() {
         ARRAY['San Francisco','Oakland','San Jose','Fremont','Hayward','Palo Alto','Mountain View','Sunnyvale','Santa Clara','Walnut Creek'],
         ARRAY['epoxy floor coating','garage floor epoxy','commercial epoxy flooring','epoxy floor installers near me','metallic epoxy floor','epoxy garage floor cost','industrial floor coating','decorative epoxy flooring'],
         'Professional Epoxy Flooring - Bay Area''s #1 Rated',
-        'Transform your garage or commercial space with stunning, durable epoxy floors. Free estimates. Licensed & insured. 10-year warranty included.',
+        'Transform your garage or commercial space with stunning, durable epoxy floors. Free estimates. Licensed & insured. Starting at $8/sq ft.',
         'Get Free Quote',
         'https://goldenstateepoxyflooring.com/quote',
         'Top performing campaign. Consistently generating quality leads from homeowners and businesses.'
@@ -171,7 +171,7 @@ export async function GET() {
         ARRAY['San Francisco','Oakland','San Jose','Fremont','Hayward','Concord','Walnut Creek','Berkeley'],
         ARRAY['epoxy flooring','garage floor coating','floor refinishing','concrete coating'],
         'Top-Rated Epoxy Flooring in the Bay Area',
-        '5-star rated on Yelp! Professional epoxy floor installation. Free estimates, 10-year warranty.',
+        '5-star rated on Yelp! Professional epoxy floor installation. Free estimates. Flake from $8/sq ft, metallic from $10/sq ft.',
         'Request a Quote',
         'https://goldenstateepoxyflooring.com/yelp',
         'Draft - pending approval from Yelp rep.'
@@ -193,7 +193,7 @@ export async function GET() {
       'Professional Epoxy Flooring - Bay Area''s #1 Rated',
       'Transform your garage or commercial space with stunning, durable epoxy floors. Free estimates.',
       'Get Free Quote', 'active', 28450, 1124, 47,
-      '{"type":"search_text","headlines":["Professional Epoxy Flooring","Bay Area #1 Rated","Free Estimates Available"],"descriptions":["Transform your space with stunning, durable epoxy floors.","Licensed & insured. 10-year warranty included."],"displayUrl":"goldenstateepoxyflooring.com/quote"}'::jsonb
+      '{"type":"search_text","headlines":["Professional Epoxy Flooring","Bay Area #1 Rated","Free Estimates Available"],"descriptions":["Transform your space with stunning, durable epoxy floors.","Licensed & insured. Flake from $8/sq ft, metallic from $10/sq ft."],"displayUrl":"goldenstateepoxyflooring.com/quote"}'::jsonb
     FROM marketing_campaigns c WHERE c.platform = 'google_ads' AND c.status = 'active'
     AND NOT EXISTS (SELECT 1 FROM marketing_ad_creatives LIMIT 1);
 

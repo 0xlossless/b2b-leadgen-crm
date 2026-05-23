@@ -52,7 +52,7 @@ Just circling back on my note about epoxy flooring for {{company_name}}. I know 
 
 If your shop floor is cracking, staining, or hard to clean — we can fix that in 1-2 days with zero downtime on a weekend install.
 
-Happy to swing by for a free estimate or send over some before/after photos of shops we've done in {{city}}.
+Happy to swing by for a free estimate — no pressure at all.
 
 Worth a quick chat?
 
@@ -121,7 +121,7 @@ We install commercial epoxy and polyaspartic floor systems built specifically fo
 • Custom colors and logos — brand your space right into the floor
 • Low maintenance — just mop and go, no waxing or resealing
 
-A clean, modern floor makes your gym look premium and keeps members coming back. We've done several facilities in the Tri-Valley and the feedback has been incredible.
+A clean, modern floor makes your gym look premium and keeps members coming back. We'd love to show you what's possible for {{company_name}}.
 
 Worth a quick chat about what an upgrade could look like for {{company_name}}?
 
@@ -166,7 +166,7 @@ Tasting Room / Taproom:
 • Stain-proof — red wine, dark beer, nothing penetrates
 • Easy to maintain — your staff spends less time cleaning, more time pouring
 
-Several Livermore Valley wineries and breweries trust us with their floors. I'd love to show you what we can do for {{company_name}}.
+I'd love to show you what we can do for {{company_name}}.
 
 Free estimate — I can come by anytime that works for you.
 
@@ -201,7 +201,7 @@ If you manage residential or commercial properties, you know the flooring headac
 Here's how we help property managers:
 
 • Parking garages — dust-proof, chemical-resistant coatings with line striping included
-• Common areas & lobbies — decorative epoxy that looks premium and lasts 15+ years
+• Common areas & lobbies — decorative epoxy that looks premium and is built to last
 • Laundry rooms — moisture-resistant, seamless floors that won't warp or mold
 • Storage units — dust-proof concrete coatings that tenants love
 • Stairwells — anti-slip coatings for safety compliance
@@ -303,7 +303,7 @@ Golden State Epoxy Flooring
 
 Quick follow-up on warehouse flooring for {{company_name}}. If your concrete is dusting, cracking, or needs fresh line striping, we can knock it out in a weekend.
 
-We've done several warehouses in {{city}} — happy to share references or stop by for a free estimate.
+Happy to stop by for a free estimate — no obligation.
 
 Joseph Galindo
 Golden State Epoxy Flooring

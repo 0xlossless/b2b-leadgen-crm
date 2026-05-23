@@ -28,13 +28,13 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Premium Epoxy Flooring for Your Business",
         description:
-          "Transform your commercial space with durable, chemical-resistant epoxy floors. Trusted by 500+ businesses. Free estimates — zero downtime installation.",
+          "Transform your commercial space with durable, chemical-resistant epoxy floors. Free estimates — zero downtime installation. Starting at $8/sq ft.",
         cta: "Get Your Free Quote",
       },
       {
         headline: "Industrial-Grade Epoxy Floors | Fast Install",
         description:
-          "Upgrade your warehouse, showroom, or office with high-performance epoxy coatings. Slip-resistant, easy to clean, 15-year warranty included.",
+          "Upgrade your warehouse, showroom, or office with high-performance epoxy coatings. Slip-resistant, easy to clean, and built to last.",
         cta: "Schedule a Consultation",
       },
       {
@@ -48,19 +48,19 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Stunning Epoxy Garage Floors | Transform Your Space",
         description:
-          "Give your garage a showroom finish. Flake, metallic & solid epoxy coatings. Lifetime warranty. Installed in just 1 day.",
+          "Give your garage a showroom finish. Flake & metallic epoxy coatings starting at $8/sq ft. Installed in just 1 day.",
         cta: "Get a Free Quote Today",
       },
       {
         headline: "Beautiful, Durable Epoxy Floors for Your Home",
         description:
-          "From garages to basements — our epoxy coatings add style and protection. Chip-resistant, easy to maintain. Trusted by 2,000+ homeowners.",
+          "From garages to basements — our epoxy coatings add style and protection. Chip-resistant, easy to maintain. Flake from $8/sq ft, metallic from $10/sq ft.",
         cta: "See Our Gallery",
       },
       {
         headline: "Garage Floor Makeover in 24 Hours",
         description:
-          "Stop hiding your garage. Premium metallic & flake epoxy finishes that last 20+ years. Military-grade durability at affordable prices.",
+          "Stop hiding your garage. Premium metallic & flake epoxy finishes built for long-lasting durability. Flake from $8/sq ft, metallic from $10/sq ft.",
         cta: "Book Your Free Consultation",
       },
     ],
@@ -80,7 +80,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Epoxy Floors That Last a Lifetime",
         description:
-          "Premium floor coatings backed by a 15-year warranty. UV-stable, chemical-resistant, and stunningly beautiful. See why 1,000+ clients trust us.",
+          "Premium floor coatings — UV-stable, chemical-resistant, and stunningly beautiful. Flake epoxy from $8/sq ft, metallic from $10/sq ft.",
         cta: "Request Your Estimate",
       },
     ],
@@ -96,7 +96,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Stop Losing Money on Floor Repairs",
         description:
-          "Epoxy flooring pays for itself. Zero maintenance costs, 15-year warranty, and a professional look that wins clients. Join 500+ businesses that made the switch.",
+          "Epoxy flooring pays for itself. Minimal maintenance costs and a professional look that wins clients. Starting at $8/sq ft for flake, $10/sq ft for metallic. 💪",
         cta: "Book Your Free Consultation",
       },
       {
@@ -122,7 +122,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Transform Your Garage This Weekend",
         description:
-          "Imagine pulling into a garage with a flawless, glossy floor. We make it happen in 24 hours with our premium epoxy coatings. Lifetime warranty included.",
+          "Imagine pulling into a garage with a flawless, glossy floor. We make it happen in 24 hours with our premium epoxy coatings. Starting at $8/sq ft.",
         cta: "Schedule Your Free Estimate",
       },
     ],
@@ -130,7 +130,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Epoxy Floors That Turn Heads",
         description:
-          "Whether it's your garage, basement, or business — our epoxy coatings deliver stunning results that last decades. See why thousands trust us with their floors.",
+          "Whether it's your garage, basement, or business — our epoxy coatings deliver stunning results that last. Flake from $8/sq ft, metallic from $10/sq ft.",
         cta: "Get a Free Quote",
       },
       {
@@ -142,7 +142,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Floors So Good, They Sell Themselves",
         description:
-          "5-star reviews, 1,000+ completed projects, and a warranty that beats everyone else. Premium epoxy coatings for homes and businesses.",
+          "5-star rated. Premium epoxy coatings for homes and businesses. Flake from $8/sq ft, metallic from $10/sq ft.",
         cta: "Request Your Free Estimate",
       },
     ],
@@ -158,13 +158,13 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Reduce Facility Maintenance Costs by 60%",
         description:
-          "Commercial epoxy flooring isn't just an upgrade — it's a strategic investment. Chemical-resistant, OSHA-compliant, and virtually maintenance-free. Trusted by Fortune 500 facilities.",
+          "Commercial epoxy flooring isn't just an upgrade — it's a strategic investment. Chemical-resistant, OSHA-compliant, and virtually maintenance-free.",
         cta: "Download Our ROI Guide",
       },
       {
         headline: "Smart Businesses Invest in Better Floors",
         description:
-          "Your facility's flooring impacts safety, productivity, and brand perception. Our industrial-grade epoxy solutions deliver on all three. 15-year warranty, weekend installation.",
+          "Your facility's flooring impacts safety, productivity, and brand perception. Our industrial-grade epoxy solutions deliver on all three. Weekend installation available.",
         cta: "Request a Consultation",
       },
     ],
@@ -180,7 +180,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "The Future of Flooring Is Epoxy",
         description:
-          "From warehouses to luxury homes, epoxy flooring delivers unmatched durability and aesthetics. We've completed 1,000+ projects with a 99% satisfaction rate.",
+          "From warehouses to luxury homes, epoxy flooring delivers unmatched durability and aesthetics. Flake from $8/sq ft, metallic from $10/sq ft.",
         cta: "Learn More",
       },
       {
@@ -204,7 +204,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Garage Goals 🏠✨",
         description:
-          "Metallic epoxy that turns your boring garage into the coolest room in the house. One day install. Lifetime warranty. Tag someone who needs this!",
+          "Metallic epoxy that turns your boring garage into the coolest room in the house. One day install. Starting at $10/sq ft. Tag someone who needs this!",
         cta: "Link in Bio for Free Quote",
       },
       {
@@ -224,7 +224,7 @@ const PLATFORM_TEMPLATES: Record<
       {
         headline: "Floor Transformations That Break the Internet 🤯",
         description:
-          "5 stars. 1,000+ floors. Infinite style options. Metallic, flake, solid — you name it, we pour it. Follow us for daily floor inspo!",
+          "5-star rated. Infinite style options. Metallic from $10/sq ft, flake from $8/sq ft — you name it, we pour it. Follow us for daily floor inspo!",
         cta: "DM for a Free Quote",
       },
     ],
