@@ -21,154 +21,102 @@ function fill(template: string, vars: Record<string, string>): string {
 const TEMPLATES: Record<string, IndustryTemplates> = {
   auto_repair: {
     initial: {
-      subject: "Upgrade {{company_name}}'s Shop Floor — Built for the Grind",
-      body: `Hi {{contact_name}},
+      subject: "Quick question about {{company_name}}'s floors",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring, and I work with auto shops across the Tri-Valley and East Bay.
+I'm Joseph — I run Golden State Epoxy out here in the Tri-Valley. I coat floors for auto shops, and I was looking at businesses in {{city}} when I came across {{company_name}}.
 
-I wanted to reach out because I know how brutal shop floors take it — oil drips, brake fluid, dropped tools, jacks rolling around all day. Most concrete floors crack, stain, and become a headache to keep clean.
+I'll keep it real — shop floors take a beating. Oil, brake fluid, jacks, dropped tools... most concrete just can't keep up. The shops I work with usually tell me the same thing: cleanup used to be a nightmare, and now they just hose it off at the end of the day.
 
-We install commercial-grade epoxy and polyaspartic coatings specifically designed for auto repair environments:
+If your floor's in rough shape or you've been thinking about upgrading it, I'd be happy to swing by and take a look. No cost, no pitch — just an honest assessment of what it would take.
 
-• Chemical & oil resistant — brake fluid, transmission fluid, and solvents wipe right up
-• Impact-tough — handles dropped tools and rolling jacks without chipping
-• Anti-slip texture — keeps your crew safe even on wet surfaces
-• Easy to clean — hose it down at the end of the day and you're done
+Either way, hope business is good.
 
-We recently coated a shop in {{city}} and the owner said it cut his cleanup time in half. Plus, customers notice when a shop looks professional — it builds trust.
-
-Would you be open to a quick 10-minute call or a free on-site estimate? No pressure at all.
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
-      subject: "Re: {{company_name}}'s Shop Floor",
-      body: `Hi {{contact_name}},
+      subject: "Re: {{company_name}}'s floors",
+      body: `Hey {{contact_name}},
 
-Just circling back on my note about epoxy flooring for {{company_name}}. I know you're busy turning wrenches, so I'll keep it short.
+Just bumping this up — I know you're busy. If your shop floor ever becomes a priority, I'm around. We can usually knock it out over a weekend so you don't lose any business days.
 
-If your shop floor is cracking, staining, or hard to clean — we can fix that in 1-2 days with zero downtime on a weekend install.
+Happy to come take a look whenever it makes sense.
 
-Happy to swing by for a free estimate — no pressure at all.
-
-Worth a quick chat?
-
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   restaurant: {
     initial: {
-      subject: "{{company_name}} — Floors That Handle the Kitchen Heat",
-      body: `Hi {{contact_name}},
+      subject: "Thought about {{company_name}}'s floors",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring. We specialize in commercial flooring for restaurants and food service businesses in the {{city}} area.
+I'm Joseph with Golden State Epoxy Flooring, based out here in the Tri-Valley. I work with restaurants in the {{city}} area and figured I'd reach out.
 
-Restaurant floors take a beating — constant foot traffic, spills, grease, hot water, and they still need to look great when guests walk in. I've seen too many restaurants dealing with cracked tile, peeling coatings, or floors that are impossible to keep sanitary.
+I know floors probably aren't top of mind when you're running a restaurant — until they become a problem. Cracked tile trapping grease, coatings peeling in the kitchen, guests noticing wear in the dining room. It adds up.
 
-Here's what we offer:
+What we do is pretty straightforward — we put down a seamless epoxy coating that's slip-resistant, easy to clean, and looks great in the front of house. Kitchen side, it's built to handle the grease, the heat, and the health inspector.
 
-• Antimicrobial epoxy coatings — meets health code standards, easy to pass inspections
-• Slip-resistant finishes — critical for kitchen and bar areas where spills are constant
-• Seamless surface — no grout lines means no trapped bacteria or grease
-• Decorative metallic options — stunning finishes for dining areas and entryways
-• Fast cure times — we can do weekend installs so you don't lose business days
+If you're ever thinking about redoing the floors, I'd love to walk through your space and give you an honest idea of what it would cost. No strings attached.
 
-A clean, professional floor transforms the dining experience. Your guests notice, and your staff will thank you.
-
-Would you be interested in a free walkthrough and estimate? I can work around your schedule.
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
-      subject: "Re: Flooring for {{company_name}}",
-      body: `Hi {{contact_name}},
+      subject: "Re: {{company_name}}'s floors",
+      body: `Hey {{contact_name}},
 
-Following up on my note about upgrading {{company_name}}'s floors. Quick question — are you dealing with any cracking, staining, or slip issues in the kitchen or dining area?
+Just following up — are floors on your radar at all right now? No worries if the timing's off. We do weekend installs so you wouldn't have to close, and I'm happy to give you a free walkthrough whenever.
 
-We do free estimates and can install over a weekend so you don't miss a single service. Health inspectors love our seamless, antimicrobial coatings too.
-
-Happy to stop by whenever works for you.
-
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   gym_fitness: {
     initial: {
-      subject: "{{company_name}} — Floors Built for Heavy Lifting",
-      body: `Hi {{contact_name}},
+      subject: "Floor question for {{company_name}}",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring, and I work with gyms and fitness studios across the {{city}} area.
+I'm Joseph — I own Golden State Epoxy Flooring out here in the Tri-Valley. I've been working with gym and fitness spaces in {{city}} and wanted to see if this might be relevant for you.
 
-I know gym floors take serious abuse — dropped weights, heavy equipment, constant foot traffic, and sweat. Standard flooring just doesn't hold up, and replacing rubber mats every year gets expensive.
+Gym floors deal with a lot — dropped weights, heavy equipment, sweat, constant traffic. Most standard flooring just breaks down. What we do is put down a commercial epoxy system that can handle the abuse, looks clean, and is way easier to maintain than what you're probably dealing with now.
 
-We install commercial epoxy and polyaspartic floor systems built specifically for fitness environments:
+We can also do custom zones — different colors or textures for lifting areas vs. cardio vs. stretching — all in one seamless surface.
 
-• Impact & drop resistant — handles dumbbells, kettlebells, and plate drops
-• Rubber-epoxy hybrid zones — we can create dedicated lifting areas with extra cushion
-• Antimicrobial surface — easy to sanitize, no cracks for bacteria to hide in
-• Custom colors and logos — brand your space right into the floor
-• Low maintenance — just mop and go, no waxing or resealing
+If you've been thinking about the floors at all, I'd be happy to come check out your space and give you a straight answer on what it would take. No cost for that.
 
-A clean, modern floor makes your gym look premium and keeps members coming back. We'd love to show you what's possible for {{company_name}}.
-
-Worth a quick chat about what an upgrade could look like for {{company_name}}?
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
-      subject: "Re: Flooring upgrade for {{company_name}}",
-      body: `Hi {{contact_name}},
+      subject: "Re: Floors at {{company_name}}",
+      body: `Hey {{contact_name}},
 
-Quick follow-up — have you thought about upgrading {{company_name}}'s floors? We can do custom zones (lifting area, cardio, stretching) with different textures and colors, all in one seamless install.
+Circling back on this — if flooring ever becomes a priority for {{company_name}}, I'm around. We do weekend installs so your members wouldn't miss a beat.
 
-Weekend installs available so your members don't miss a workout. Free estimate anytime.
+Happy to stop by anytime.
 
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   brewery_winery: {
     initial: {
-      subject: "{{company_name}} — Floors That Handle the Spills (and Look Amazing)",
-      body: `Hi {{contact_name}},
+      subject: "Floors at {{company_name}} — quick thought",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring. We work with breweries and wineries across Livermore Valley and the Tri-Valley.
+I'm Joseph with Golden State Epoxy Flooring — based right here in Livermore Valley. Figured I'd reach out since I work with breweries and wineries in the area.
 
-I know your production floors deal with constant moisture, acidic spills, cleaning chemicals, and heavy equipment. And your tasting room? That needs to look as good as your product tastes.
+Your production side and your tasting room have completely different floor needs, and we handle both. On the production side, we use coatings that can take the acid, the moisture, and the constant washdowns. For the tasting room, we do metallic epoxy finishes that honestly look incredible — each one comes out unique.
 
-We install specialized coatings for both sides of your operation:
-
-Production / Cellar:
-• Chemical & acid resistant — handles wine, beer, sanitizers, and caustic cleaners
-• Sloped-to-drain compatible — proper drainage for washdown areas
-• FDA/USDA compliant coatings — food-safe and inspection-ready
-• Non-slip even when wet — critical for production safety
-
-Tasting Room / Taproom:
-• Metallic and decorative epoxy — stunning, one-of-a-kind finishes
-• Stain-proof — red wine, dark beer, nothing penetrates
-• Easy to maintain — your staff spends less time cleaning, more time pouring
-
-I'd love to show you what we can do for {{company_name}}.
-
-Free estimate — I can come by anytime that works for you.
+If your floors have been bugging you or you're planning a refresh, I'd love to come by, check out the space, and give you a real number. No obligation — and I'll gladly grab a pint or a glass while I'm there.
 
 Cheers,
 Joseph Galindo
@@ -176,137 +124,102 @@ Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
-      subject: "Re: Flooring for {{company_name}}",
-      body: `Hi {{contact_name}},
+      subject: "Re: Floors at {{company_name}}",
+      body: `Hey {{contact_name}},
 
-Following up on my note about flooring for {{company_name}}. Whether it's the production floor or tasting room (or both), we've got coatings built for exactly what you deal with daily.
+Just following up — any interest in looking at the floors? Happy to swing by and keep it casual. Free estimate, no commitment.
 
-Happy to swing by, buy a pint/glass, and give you a free quote while I'm there. 🍺🍷
-
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   property_management: {
     initial: {
-      subject: "{{company_name}} — Upgrade Your Properties with Zero Maintenance Floors",
-      body: `Hi {{contact_name}},
+      subject: "Flooring idea for {{company_name}} properties",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring. We work with property management companies in {{city}} and across the East Bay to upgrade high-traffic common areas.
+I'm Joseph with Golden State Epoxy Flooring. I work with property managers in {{city}} and wanted to float something by you.
 
-If you manage residential or commercial properties, you know the flooring headaches — parking garages that crack and dust, laundry rooms with moisture damage, lobbies that look worn after a year, and maintenance costs that add up.
+If you manage properties with parking garages, common areas, or laundry rooms — you already know how fast concrete breaks down in those high-traffic spots. Cracking, dusting, staining... it's a constant maintenance drain and it makes the property look tired.
 
-Here's how we help property managers:
+What we do is put down an epoxy coating that solves most of those problems in one shot. Parking garages stay dust-free and we include line striping. Lobbies and common areas get a clean, premium look. Laundry rooms stop warping and molding.
 
-• Parking garages — dust-proof, chemical-resistant coatings with line striping included
-• Common areas & lobbies — decorative epoxy that looks premium and is built to last
-• Laundry rooms — moisture-resistant, seamless floors that won't warp or mold
-• Storage units — dust-proof concrete coatings that tenants love
-• Stairwells — anti-slip coatings for safety compliance
+If you've got a property or two in mind where this might make sense, I'd be happy to take a look and give you a number. We also do volume pricing for management companies with multiple properties.
 
-Our coatings reduce your maintenance costs and boost property value. Tenants notice the difference, and it makes your properties stand out during tours.
-
-Would you be open to discussing a property or two where this might make sense?
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
       subject: "Re: Flooring for {{company_name}} properties",
-      body: `Hi {{contact_name}},
+      body: `Hey {{contact_name}},
 
-Just following up — do you have any properties with parking garages, common areas, or units that could use a flooring refresh?
+Just checking in — do you have any properties that could use a flooring refresh? We work around tenant schedules and can usually handle a space over a weekend.
 
-We offer volume discounts for property management companies and can schedule installs around tenant schedules. Free estimates on any property in the {{city}} area.
+Free estimates on anything in the {{city}} area. Just let me know.
 
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   manufacturing: {
     initial: {
-      subject: "{{company_name}} — Industrial Floors Built for Production",
-      body: `Hi {{contact_name}},
+      subject: "Quick question about {{company_name}}'s production floor",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring. We install industrial-grade floor coatings for manufacturing facilities in {{city}} and the greater Bay Area.
+I'm Joseph with Golden State Epoxy Flooring. We do industrial floor coatings for manufacturing facilities in the {{city}} area, and I wanted to see if this is on your radar.
 
-Manufacturing floors face the toughest conditions — heavy machinery, chemical exposure, forklift traffic, and constant worker foot traffic. Cracked or dusting concrete is more than ugly — it's a safety hazard and an OSHA liability.
+Production floors deal with a lot — forklifts, chemicals, heavy foot traffic. When concrete starts cracking and dusting, it's not just ugly — it's a safety issue and it can mess with air quality and product cleanliness.
 
-Here's what we bring to the table:
+We put down heavy-duty epoxy systems that handle all of it. We can also do OSHA-compliant safety markings — walkways, hazard zones, equipment areas — all built into the floor. And we do phased installs (nights or weekends) so your production line keeps running.
 
-• Heavy-duty epoxy systems — rated for forklift and machinery loads
-• Chemical-resistant coatings — handles oils, solvents, and industrial cleaners
-• Safety markings — OSHA-compliant line striping for walkways, hazard zones, and equipment areas
-• Anti-static options — ESD flooring for electronics and sensitive manufacturing
-• Dust-proofing — sealed concrete means cleaner products and better air quality
-• Fast turnaround — phased installs available so production doesn't stop
+If your floor could use some attention, I'd be happy to come take a look and give you a straight answer on what it would take. No cost for the assessment.
 
-A properly coated production floor improves safety, reduces maintenance, and looks professional for client tours and inspections.
-
-Would a free on-site assessment be useful for {{company_name}}?
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
-      subject: "Re: Industrial flooring for {{company_name}}",
-      body: `Hi {{contact_name}},
+      subject: "Re: {{company_name}}'s production floor",
+      body: `Hey {{contact_name}},
 
-Following up on industrial flooring for {{company_name}}. If your production floor has any cracking, dusting, chemical staining, or safety marking needs — we can handle it all in one project.
+Following up — if your production floor has any cracking, dusting, or needs fresh safety markings, I'd be happy to come take a look. We can handle it all in one project without shutting down your line.
 
-We do phased installs (nights/weekends) so your production line keeps running. Free assessment anytime.
+Let me know if it makes sense to connect.
 
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
 
   warehouse: {
     initial: {
-      subject: "{{company_name}} — Warehouse Floors That Perform",
-      body: `Hi {{contact_name}},
+      subject: "{{company_name}}'s warehouse floor — quick thought",
+      body: `Hey {{contact_name}},
 
-I'm Joseph with Golden State Epoxy Flooring. We coat warehouse and distribution floors across the {{city}} area.
+I'm Joseph with Golden State Epoxy Flooring. We coat warehouse floors in the {{city}} area and I wanted to reach out.
 
-Warehouse concrete takes a beating — forklifts, pallet jacks, heavy loads, and constant traffic grind down bare concrete fast. Dust, cracks, and unclear markings create safety issues and slow down operations.
+Bare concrete in a warehouse breaks down fast — forklifts, pallet jacks, and heavy loads grind it up. You end up with dust everywhere, cracks that catch wheels, and faded markings that nobody can follow. It slows things down and creates liability.
 
-We install coatings specifically designed for warehouse environments:
+What we do is seal and coat the floor so it's dust-free, impact-resistant, and clearly marked. Traffic lanes, loading zones, pedestrian paths — all built in. The floor also reflects more light, which brightens the whole space without adding fixtures.
 
-• Forklift-rated epoxy — handles heavy wheel loads without chipping or peeling
-• Dust-proof finish — no more concrete dust on products, equipment, or in the air
-• Line striping — traffic lanes, loading zones, pedestrian walkways, rack locations
-• Loading dock coatings — impact-resistant for the highest-traffic areas
-• Reflective finishes — brighten your space by up to 30% with light-reflective coatings
-• Fast cure — polyaspartic systems ready for traffic in 24 hours
+If your concrete's seen better days, I'd be glad to walk through and give you an honest estimate. No cost, no pressure.
 
-Clean, marked, dust-free floors make your operation run smoother and keep workers safer. Plus it looks professional for any client or inspector walkthroughs.
-
-Interested in a free walkthrough and estimate?
-
-Best,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`,
     },
     followup: {
       subject: "Re: Warehouse flooring for {{company_name}}",
-      body: `Hi {{contact_name}},
+      body: `Hey {{contact_name}},
 
-Quick follow-up on warehouse flooring for {{company_name}}. If your concrete is dusting, cracking, or needs fresh line striping, we can knock it out in a weekend.
+Circling back — if your warehouse floor is dusting, cracking, or the markings have faded, we can usually knock it out over a weekend.
 
-Happy to stop by for a free estimate — no obligation.
+Happy to stop by and take a look whenever works for you.
 
-Joseph Galindo
-Golden State Epoxy Flooring
+Joseph
 (925) 518-2985`,
     },
   },
@@ -333,6 +246,10 @@ const INDUSTRY_MAP: Record<string, string> = {
   "Manufacturing": "manufacturing",
   "Warehouse": "warehouse",
   "Warehouse & Distribution": "warehouse",
+  "Hospitality": "brewery_winery",
+  "Healthcare": "manufacturing", // similar needs — durable, easy to clean
+  "Retail": "property_management", // similar needs — high traffic, aesthetics
+  "Construction": "warehouse", // similar needs — heavy duty
 };
 
 export function getTemplate(

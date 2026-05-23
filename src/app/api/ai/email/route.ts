@@ -51,21 +51,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Fallback generic template
-    const subject = `Golden State Epoxy — Premium Flooring for ${lead.company_name}`;
-    const body = `Hi ${contact?.full_name || "there"},
+    const subject = `Quick question for ${lead.company_name}`;
+    const body = `Hey ${contact?.full_name || "there"},
 
-I'm Joseph with Golden State Epoxy Flooring. We specialize in commercial and residential epoxy flooring solutions in the ${lead.city || "Bay Area"} area.
+I'm Joseph with Golden State Epoxy Flooring, based in the ${lead.city || "Bay Area"} area. I came across ${lead.company_name} and figured I'd reach out.
 
-I noticed ${lead.company_name} might benefit from our services${lead.industry ? ` in the ${lead.industry} space` : ""}. We offer:
+We do commercial and residential epoxy floor coatings — everything from garage floors to full warehouse or retail spaces. If your floors have been on your mind at all, I'd be happy to come take a look and give you an honest idea of what it would take. No cost for that.
 
-• Metallic epoxy floors
-• Commercial-grade coatings
-• Garage floor transformations
-• Custom color matching
+If the timing's off, no worries at all. Just wanted to put it on your radar.
 
-Would you be open to a quick 15-minute call this week to discuss how we can help?
-
-Best regards,
 Joseph Galindo
 Golden State Epoxy Flooring
 (925) 518-2985`;
