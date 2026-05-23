@@ -38,6 +38,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Mail,
+  Megaphone,
   LogOut,
   Sun,
   Moon,
@@ -50,6 +51,7 @@ const NAV_ITEMS = [
   { label: "Leads", href: "/leads", icon: Users },
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Outreach", href: "/outreach", icon: Mail },
+  { label: "Marketing", href: "/marketing", icon: Megaphone },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Scraper", href: "/scraper", icon: Search },
 ] as const;
@@ -59,6 +61,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/leads": "Leads",
   "/pipeline": "Pipeline",
   "/outreach": "Outreach",
+  "/marketing": "Marketing",
   "/analytics": "Analytics",
   "/scraper": "Scraper",
 };
