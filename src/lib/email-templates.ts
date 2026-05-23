@@ -10,14 +10,92 @@ export interface IndustryTemplates {
   followup: EmailTemplate;
 }
 
+export interface TemplateVars {
+  company_name: string;
+  contact_name: string;
+  city: string;
+  coating_type?: string;   // "Flaked Epoxy" or "Metallic Epoxy"
+  square_footage?: string; // e.g. "500"
+  project_type?: string;   // e.g. "Residential Garage"
+  message?: string;        // customer's free-text message
+}
+
 function fill(template: string, vars: Record<string, string>): string {
   let result = template;
   for (const [key, value] of Object.entries(vars)) {
     result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value || "");
   }
+  // Clean up any unreplaced optional vars
+  result = result.replace(/\{\{[a-z_]+\}\}/g, "");
   return result;
 }
 
+// ── Quote-specific templates (when we have project details) ─────────
+function quoteInitialEmail(vars: TemplateVars): EmailTemplate {
+  const name = vars.contact_name || "there";
+  const coatingMention = vars.coating_type?.toLowerCase().includes("metallic")
+    ? "metallic epoxy"
+    : vars.coating_type?.toLowerCase().includes("flake")
+    ? "flake epoxy"
+    : "epoxy";
+  const sqft = vars.square_footage ? `${vars.square_footage} sq ft` : "";
+  const project = vars.project_type || "";
+
+  let projectLine = "";
+  if (sqft && project) {
+    projectLine = `I saw you're looking at ${coatingMention} for your ${project.toLowerCase()} — about ${sqft}. `;
+  } else if (sqft) {
+    projectLine = `I saw you're looking at ${coatingMention} for about ${sqft}. `;
+  } else if (project) {
+    projectLine = `I saw you're interested in ${coatingMention} for your ${project.toLowerCase()}. `;
+  } else {
+    projectLine = `I saw you're interested in ${coatingMention}. `;
+  }
+
+  const messageNote = vars.message && vars.message !== "No message" && vars.message !== ""
+    ? `\nYou mentioned: "${vars.message}" — totally noted, we can work with that.\n`
+    : "";
+
+  return {
+    subject: `Your ${coatingMention} quote — following up`,
+    body: `Hey ${name},
+
+Thanks for reaching out about your flooring project — I appreciate you taking the time.
+
+${projectLine}That's a great fit for what we do, and I'd love to get you a solid number.${messageNote}
+
+The best next step would be for me to come see the space in person. Every floor is a little different, and I want to give you an accurate quote — not a guess. Takes about 15 minutes and there's no cost or obligation.
+
+What does your schedule look like this week or next?
+
+Joseph Galindo
+Golden State Epoxy Flooring
+(925) 518-2985`,
+  };
+}
+
+function quoteFollowupEmail(vars: TemplateVars): EmailTemplate {
+  const name = vars.contact_name || "there";
+  const coatingMention = vars.coating_type?.toLowerCase().includes("metallic")
+    ? "metallic epoxy"
+    : vars.coating_type?.toLowerCase().includes("flake")
+    ? "flake epoxy"
+    : "epoxy";
+
+  return {
+    subject: `Re: Your ${coatingMention} quote`,
+    body: `Hey ${name},
+
+Just bumping this up — I know things get busy. Still happy to come take a look at your space and get you that ${coatingMention} quote whenever works for you.
+
+No rush at all, just don't want it to slip through the cracks. Let me know if you have any questions in the meantime.
+
+Joseph
+(925) 518-2985`,
+  };
+}
+
+// ── Cold outreach templates (no quote data) ─────────────────────────
 const TEMPLATES: Record<string, IndustryTemplates> = {
   auto_repair: {
     initial: {
@@ -227,16 +305,14 @@ Joseph
 
 // Map database industry values to template keys
 const INDUSTRY_MAP: Record<string, string> = {
-  // Database values
   "Automotive": "auto_repair",
-  "Commercial": "warehouse", // catch-all for commercial/industrial
+  "Commercial": "warehouse",
   "Fitness": "gym_fitness",
   "Restaurant": "restaurant",
   "Real Estate": "property_management",
   "Storage": "warehouse",
   "Winery": "brewery_winery",
   "Brewery": "brewery_winery",
-  // Alternate names
   "Auto Body & Repair": "auto_repair",
   "Auto Repair & Service": "auto_repair",
   "Restaurants & Dining": "restaurant",
@@ -247,9 +323,9 @@ const INDUSTRY_MAP: Record<string, string> = {
   "Warehouse": "warehouse",
   "Warehouse & Distribution": "warehouse",
   "Hospitality": "brewery_winery",
-  "Healthcare": "manufacturing", // similar needs — durable, easy to clean
-  "Retail": "property_management", // similar needs — high traffic, aesthetics
-  "Construction": "warehouse", // similar needs — heavy duty
+  "Healthcare": "manufacturing",
+  "Retail": "property_management",
+  "Construction": "warehouse",
 };
 
 export function getTemplate(
@@ -265,13 +341,23 @@ export function getTemplate(
 export function renderEmail(
   industry: string,
   variant: "initial" | "followup",
-  vars: { company_name: string; contact_name: string; city: string }
+  vars: TemplateVars
 ): EmailTemplate | null {
+  // If we have quote data (coating type or sqft), use personalized quote templates
+  const hasQuoteData = vars.coating_type || vars.square_footage;
+
+  if (hasQuoteData) {
+    return variant === "followup"
+      ? quoteFollowupEmail(vars)
+      : quoteInitialEmail(vars);
+  }
+
+  // Otherwise fall back to cold outreach templates
   const template = getTemplate(industry, variant);
   if (!template) return null;
   return {
-    subject: fill(template.subject, vars),
-    body: fill(template.body, vars),
+    subject: fill(template.subject, vars as any),
+    body: fill(template.body, vars as any),
   };
 }
 

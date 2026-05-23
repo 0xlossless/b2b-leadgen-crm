@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     } else {
       // Generate from template
       const rendered = renderEmail(industry, variant as "initial" | "followup", {
-        company_name: lead.company_name || "your company",
+        company_name: lead.company_name?.replace(" — Quote Request", "") || "your company",
         contact_name: contact?.full_name || "there",
         city: lead.city || "the Bay Area",
       });
@@ -127,8 +127,8 @@ export async function POST(request: NextRequest) {
         body = rendered.body;
         templateUsed = INDUSTRY_MAP[industry] || industry;
       } else {
-        subject = `Golden State Epoxy — Premium Flooring for ${lead.company_name}`;
-        body = `Hi ${contact?.full_name || "there"},\n\nI'm Joseph with Golden State Epoxy Flooring. We specialize in commercial epoxy flooring in the ${lead.city || "Bay Area"} area.\n\nWould you be open to a quick call to discuss how we can help ${lead.company_name}?\n\nBest,\nJoseph Galindo\n(925) 518-2985`;
+        subject = `Quick question for ${lead.company_name}`;
+        body = `Hey ${contact?.full_name || "there"},\n\nI'm Joseph with Golden State Epoxy Flooring. We do commercial and residential epoxy coatings in the ${lead.city || "Bay Area"} area. If your floors have been on your mind, I'd be happy to come take a look — no cost, no pressure.\n\nJoseph Galindo\n(925) 518-2985`;
         templateUsed = "generic";
       }
     }
