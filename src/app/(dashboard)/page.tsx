@@ -156,13 +156,13 @@ export default async function CommandCenter() {
 
       {/* Annual Revenue Tracker */}
       {(() => {
-        const goal = 1_000_000;
+        const goal = 250_000;
         const revenue = data.kpis.totalRevenue;
         const pct = Math.min((revenue / goal) * 100, 100);
         const milestones = [
-          { label: "$250K", value: 250_000 },
-          { label: "$500K", value: 500_000 },
-          { label: "$750K", value: 750_000 },
+          { label: "$50K", value: 50_000 },
+          { label: "$100K", value: 100_000 },
+          { label: "$200K", value: 200_000 },
         ];
         return (
           <Card className="bg-zinc-900 border-zinc-800 mb-8">
@@ -179,7 +179,7 @@ export default async function CommandCenter() {
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-zinc-500">Goal</p>
-                  <p className="text-lg font-semibold text-amber-400">$1,000,000</p>
+                  <p className="text-lg font-semibold text-amber-400">$250,000</p>
                 </div>
               </div>
               {/* Progress bar */}
@@ -214,11 +214,11 @@ export default async function CommandCenter() {
                     {m.label}
                   </span>
                 ))}
-                <span className="absolute right-0 text-[10px] text-zinc-500">$1M</span>
+                <span className="absolute right-0 text-[10px] text-zinc-500">$250K</span>
               </div>
               {/* Percentage */}
               <p className="text-center text-sm text-zinc-400 mt-2">
-                <span className="text-amber-400 font-semibold">{pct.toFixed(1)}%</span> of $1M goal
+                <span className="text-amber-400 font-semibold">{pct.toFixed(1)}%</span> of $250K goal
                 {revenue > 0 && (
                   <span className="text-zinc-500"> — {formatCurrency(goal - revenue)} to go</span>
                 )}
