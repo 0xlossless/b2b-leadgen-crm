@@ -133,7 +133,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         <Building2 className="h-4 w-4 text-white" />
       </div>
       {!collapsed && (
-        <span className="text-lg font-bold text-foreground">GS Epoxy CRM</span>
+        <span className="text-lg font-bold text-foreground">Dealflow CRM</span>
       )}
     </div>
   );
@@ -274,7 +274,7 @@ export function MobileSidebar() {
 // ─── Header ───────────────────────────────────────────────
 export function Header() {
   const pathname = usePathname();
-  const pageTitle = PAGE_TITLES[pathname] ?? "GS Epoxy CRM";
+  const pageTitle = PAGE_TITLES[pathname] ?? "Dealflow CRM";
 
   const handleSignOut = async () => {
     const supabase = createClient();

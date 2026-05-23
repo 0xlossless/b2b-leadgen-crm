@@ -11,8 +11,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "GS Epoxy CRM",
-  description: "B2B Lead Generation & Pipeline Management CRM",
+  title: "Dealflow CRM",
+  description: "Dealflow CRM — Lead Generation & Pipeline Management",
 };
 
 export default function RootLayout({

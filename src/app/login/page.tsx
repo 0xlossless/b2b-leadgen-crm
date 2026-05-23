@@ -87,7 +87,7 @@ export default function LoginPage() {
               <Building2 className="h-7 w-7 text-white" />
             </div>
             <h1 className="mt-4 text-2xl font-bold text-zinc-100">
-              GS Epoxy CRM
+              Dealflow CRM
             </h1>
             <p className="mt-1 text-sm text-zinc-500">
               {forgotMode ? 'Reset your password' : 'Sign in to your account'}
