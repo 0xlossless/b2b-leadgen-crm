@@ -107,6 +107,7 @@ async function getDashboardData() {
       closedThisMonth,
       avgDealSize,
       conversionRate,
+      totalRevenue: wonValue,
     },
     activities,
     leadsBySource,
@@ -152,6 +153,81 @@ export default async function CommandCenter() {
           );
         })}
       </div>
+
+      {/* Annual Revenue Tracker */}
+      {(() => {
+        const goal = 1_000_000;
+        const revenue = data.kpis.totalRevenue;
+        const pct = Math.min((revenue / goal) * 100, 100);
+        const milestones = [
+          { label: "$250K", value: 250_000 },
+          { label: "$500K", value: 500_000 },
+          { label: "$750K", value: 750_000 },
+        ];
+        return (
+          <Card className="bg-zinc-900 border-zinc-800 mb-8">
+            <CardContent className="pt-6 pb-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400/10">
+                    <DollarSign className="h-5 w-5 text-amber-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-zinc-400">Annual Revenue</h3>
+                    <p className="text-2xl font-bold text-zinc-100">{formatCurrency(revenue)}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-zinc-500">Goal</p>
+                  <p className="text-lg font-semibold text-amber-400">$1,000,000</p>
+                </div>
+              </div>
+              {/* Progress bar */}
+              <div className="relative">
+                <div className="h-4 bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all duration-1000 ease-out"
+                    style={{
+                      width: `${Math.max(pct, 0.5)}%`,
+                      background: "linear-gradient(90deg, #f59e0b, #eab308, #a3e635)",
+                    }}
+                  />
+                </div>
+                {/* Milestone markers */}
+                {milestones.map((m) => (
+                  <div
+                    key={m.label}
+                    className="absolute top-0 h-4 w-px bg-zinc-600"
+                    style={{ left: `${(m.value / goal) * 100}%` }}
+                  />
+                ))}
+              </div>
+              {/* Labels under bar */}
+              <div className="relative mt-1.5 h-5">
+                <span className="absolute left-0 text-[10px] text-zinc-500">$0</span>
+                {milestones.map((m) => (
+                  <span
+                    key={m.label}
+                    className="absolute text-[10px] text-zinc-500 -translate-x-1/2"
+                    style={{ left: `${(m.value / goal) * 100}%` }}
+                  >
+                    {m.label}
+                  </span>
+                ))}
+                <span className="absolute right-0 text-[10px] text-zinc-500">$1M</span>
+              </div>
+              {/* Percentage */}
+              <p className="text-center text-sm text-zinc-400 mt-2">
+                <span className="text-amber-400 font-semibold">{pct.toFixed(1)}%</span> of $1M goal
+                {revenue > 0 && (
+                  <span className="text-zinc-500"> — {formatCurrency(goal - revenue)} to go</span>
+                )}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })()}
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
         <Card className="lg:col-span-3 bg-zinc-900 border-zinc-800">
           <CardHeader><CardTitle className="text-zinc-100">Recent Activity</CardTitle></CardHeader>
