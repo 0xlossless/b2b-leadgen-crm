@@ -1,4 +1,3 @@
-import { createClient } from "@supabase/supabase-js";
 import {
   Users,
   Flame,
@@ -27,72 +26,89 @@ function formatCurrency(value: number) {
   return `$${value.toLocaleString()}`;
 }
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+// Use direct REST API instead of Supabase JS client to avoid stale data
+async function supaFetch(path: string) {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: {
+      "apikey": key,
+      "Authorization": `Bearer ${key}`,
+      "Prefer": "count=exact",
+    },
+    cache: "no-store",
+  });
+  const data = await res.json();
+  const count = res.headers.get("content-range")?.split("/")?.[1];
+  return { data, count: count ? parseInt(count) : null };
 }
 
 async function getDashboardData() {
-  const supabase = getSupabase();
+  // Fetch all data via direct REST (avoids Supabase JS client caching issue)
+  const [leadsRes, dealsRes, scoresRes, activitiesRes] = await Promise.all([
+    supaFetch("leads?select=id,source"),
+    supaFetch("deals?select=*"),
+    supaFetch("lead_scores?select=total_score,tier,lead_id"),
+    supaFetch("activities?select=id,type,description,created_at,lead_id&order=created_at.desc&limit=20"),
+  ]);
 
-  // Total leads
-  const { count: totalLeads } = await supabase.from("leads").select("*", { count: "exact", head: true });
+  const allLeads = leadsRes.data || [];
+  const deals = dealsRes.data || [];
+  const allScores = scoresRes.data || [];
+  const rawActivities = activitiesRes.data || [];
 
-  // Hot leads
-  const { count: hotLeads } = await supabase.from("lead_scores").select("*", { count: "exact", head: true }).eq("tier", "hot");
+  const totalLeads = allLeads.length;
+  const hotLeads = allScores.filter((s: any) => s.tier === "hot").length;
 
-  // All deals for calculations
-  const { data: allDeals } = await supabase.from("deals").select("*");
-  const deals = allDeals || [];
-
-  const activeDeals = deals.filter(d => d.stage !== "closed_won" && d.stage !== "closed_lost");
-  const pipelineValue = activeDeals.reduce((s, d) => s + (parseFloat(d.deal_value || "0") || 0), 0);
+  const activeDeals = deals.filter((d: any) => d.stage !== "closed_won" && d.stage !== "closed_lost");
+  const pipelineValue = activeDeals.reduce((s: number, d: any) => s + (Number(d.deal_value) || 0), 0);
 
   const now = new Date();
   const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const closedThisMonth = deals.filter(d => d.stage === "closed_won" && d.close_date && d.close_date >= firstOfMonth).length;
+  const closedThisMonth = deals.filter((d: any) => d.stage === "closed_won" && d.close_date && d.close_date >= firstOfMonth).length;
 
-  const wonDeals = deals.filter(d => d.stage === "closed_won");
-  const wonValue = wonDeals.reduce((s, d) => s + (parseFloat(d.deal_value || "0") || 0), 0);
+  const wonDeals = deals.filter((d: any) => d.stage === "closed_won");
+  const wonValue = wonDeals.reduce((s: number, d: any) => s + (Number(d.deal_value) || 0), 0);
   const avgDealSize = wonDeals.length > 0 ? Math.round(wonValue / wonDeals.length) : 0;
   const conversionRate = deals.length > 0 ? Math.round((wonDeals.length / deals.length) * 1000) / 10 : 0;
 
-  // Recent activities
-  const { data: rawActivities } = await supabase.from("activities").select("id, type, description, created_at, lead_id").order("created_at", { ascending: false }).limit(20);
-  const activities = (rawActivities || []).map(a => ({ id: a.id, type: a.type, description: a.description, createdAt: a.created_at, leadId: a.lead_id }));
+  // Activities
+  const activities = rawActivities.map((a: any) => ({
+    id: a.id,
+    type: a.type,
+    description: a.description,
+    createdAt: a.created_at,
+    leadId: a.lead_id,
+  }));
 
   // Leads by source
-  const { data: allLeadsForSource } = await supabase.from("leads").select("source");
   const sourceMap = new Map<string, number>();
-  (allLeadsForSource || []).forEach(l => sourceMap.set(l.source, (sourceMap.get(l.source) || 0) + 1));
+  allLeads.forEach((l: any) => sourceMap.set(l.source, (sourceMap.get(l.source) || 0) + 1));
   const leadsBySource = Array.from(sourceMap.entries()).map(([source, count]) => ({ source, count }));
 
   // Score distribution
-  const { data: allScores } = await supabase.from("lead_scores").select("total_score");
   const ranges = ["0-20", "20-40", "40-60", "60-80", "80-100"];
   const scoreDist = ranges.map(range => {
     const [min, max] = range.split("-").map(Number);
-    const count = (allScores || []).filter(s => s.total_score >= min && (range === "80-100" ? s.total_score <= max : s.total_score < max)).length;
+    const count = allScores.filter((s: any) => s.total_score >= min && (range === "80-100" ? s.total_score <= max : s.total_score < max)).length;
     return { range, count };
   });
 
   // Pipeline funnel
   const stageMap = new Map<string, number>();
-  deals.forEach(d => stageMap.set(d.stage, (stageMap.get(d.stage) || 0) + 1));
+  deals.forEach((d: any) => stageMap.set(d.stage, (stageMap.get(d.stage) || 0) + 1));
   const pipelineFunnel = Array.from(stageMap.entries()).map(([stage, count]) => ({ stage, count }));
 
   return {
     kpis: {
-      totalLeads: totalLeads || 0,
-      hotLeads: hotLeads || 0,
+      totalLeads,
+      hotLeads,
       pipelineValue,
       closedThisMonth,
       avgDealSize,
       conversionRate,
     },
-    activities: activities || [],
+    activities,
     leadsBySource,
     scoreDistribution: scoreDist,
     pipelineFunnel,
