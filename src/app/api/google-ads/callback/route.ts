@@ -5,16 +5,10 @@ export const dynamic = "force-dynamic";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 
 function getRedirectUri() {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}/api/google-ads/callback`;
-  }
   return "https://b2b-leadgen-kappa.vercel.app/api/google-ads/callback";
 }
 
 function getBaseUrl() {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
   return "https://b2b-leadgen-kappa.vercel.app";
 }
 

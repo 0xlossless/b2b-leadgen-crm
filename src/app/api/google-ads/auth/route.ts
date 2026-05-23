@@ -6,9 +6,6 @@ export const dynamic = "force-dynamic";
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 
 function getRedirectUri() {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}/api/google-ads/callback`;
-  }
   return "https://b2b-leadgen-kappa.vercel.app/api/google-ads/callback";
 }
 
@@ -31,7 +28,7 @@ export async function GET() {
       response_type: "code",
       scope: "https://www.googleapis.com/auth/adwords",
       access_type: "offline",
-      prompt: "consent",
+      prompt: "consent select_account",
       state,
     });
 
