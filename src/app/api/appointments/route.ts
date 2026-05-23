@@ -131,6 +131,46 @@ export async function POST(request: NextRequest) {
         description: `${typeLabel} scheduled for ${date}${startTime ? ` at ${startTime}` : ""}`,
         created_at: now,
       });
+
+      // Auto-advance pipeline: move deal to "demo_scheduled" when a quote meeting is booked
+      // Only advance if deal is in an earlier stage (don't move backwards)
+      const earlyStages = ["new_lead", "contacted", "qualified"];
+      const { data: dealRows } = await supabase
+        .from("deals")
+        .select("id, stage")
+        .eq("lead_id", leadId)
+        .limit(1);
+
+      const deal = dealRows?.[0];
+      if (deal && earlyStages.includes(deal.stage)) {
+        // Use direct REST to avoid Supabase JS silent update issues
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+        const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+
+        await fetch(
+          `${supabaseUrl}/rest/v1/deals?id=eq.${deal.id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "apikey": serviceKey,
+              "Authorization": `Bearer ${serviceKey}`,
+              "Content-Type": "application/json",
+              "Prefer": "return=minimal",
+            },
+            body: JSON.stringify({ stage: "demo_scheduled" }),
+          }
+        );
+
+        // Log the stage change
+        await supabase.from("activities").insert({
+          id: ulid(),
+          lead_id: leadId,
+          deal_id: deal.id,
+          type: "stage_change",
+          description: `Deal moved to Demo Scheduled (quote meeting booked)`,
+          created_at: now,
+        });
+      }
     }
 
     return NextResponse.json(data, { status: 201 });
