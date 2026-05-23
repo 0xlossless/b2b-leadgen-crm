@@ -13,76 +13,7 @@ function customerId(): string {
   return (process.env.GADS_CUSTOMER_ID ?? "").replace(/-/g, "");
 }
 
-// ── Mock data returned when Google Ads is not connected ─────────────
-function getMockCampaigns() {
-  return [
-    {
-      id: "mock-1",
-      name: "Golden State Epoxy – Bay Area Search",
-      status: "ENABLED",
-      type: "SEARCH",
-      budget: 85,
-      spend: 2341.56,
-      impressions: 48720,
-      clicks: 1893,
-      conversions: 127,
-      ctr: 0.0388,
-      cpc: 1.24,
-    },
-    {
-      id: "mock-2",
-      name: "Epoxy Flooring – Sacramento",
-      status: "ENABLED",
-      type: "SEARCH",
-      budget: 65,
-      spend: 1672.34,
-      impressions: 31450,
-      clicks: 1240,
-      conversions: 84,
-      ctr: 0.0394,
-      cpc: 1.35,
-    },
-    {
-      id: "mock-3",
-      name: "Commercial Flooring Solutions",
-      status: "PAUSED",
-      type: "SEARCH",
-      budget: 120,
-      spend: 4521.89,
-      impressions: 72100,
-      clicks: 2810,
-      conversions: 195,
-      ctr: 0.039,
-      cpc: 1.61,
-    },
-    {
-      id: "mock-4",
-      name: "Garage Floor Coating – Local",
-      status: "ENABLED",
-      type: "SEARCH",
-      budget: 45,
-      spend: 987.65,
-      impressions: 18300,
-      clicks: 734,
-      conversions: 52,
-      ctr: 0.0401,
-      cpc: 1.35,
-    },
-    {
-      id: "mock-5",
-      name: "Metallic Epoxy Showroom",
-      status: "PAUSED",
-      type: "SEARCH",
-      budget: 50,
-      spend: 1150.0,
-      impressions: 22400,
-      clicks: 890,
-      conversions: 61,
-      ctr: 0.0397,
-      cpc: 1.29,
-    },
-  ];
-}
+// ── Empty fallback when Google Ads is not connected ─────────────
 
 // ── GET  /api/google-ads/campaigns ──────────────────────────────────
 export async function GET() {
@@ -135,9 +66,9 @@ export async function GET() {
 
     if (isNotConnected) {
       return NextResponse.json({
-        campaigns: getMockCampaigns(),
-        source: "mock",
-        message: "Google Ads is not connected. Showing demo data.",
+        campaigns: [],
+        source: "not_connected",
+        message: "Google Ads is not connected. Connect your account in Settings to see campaigns.",
       });
     }
 

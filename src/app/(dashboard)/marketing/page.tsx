@@ -132,32 +132,12 @@ const AD_TEMPLATES: Record<string, Partial<AdVariant>> = {
   },
 };
 
-// ─── Placeholder Data ───────────────────────────────────────
-const MOCK_CAMPAIGNS: Campaign[] = [
-  { id: "c1", name: "Garage Floor Spring Promo", platform: "google", status: "active", type: "Search", budget: 1500, budgetType: "total", spend: 842.50, impressions: 24300, clicks: 486, conversions: 32, startDate: "2025-04-01", endDate: "2025-05-31", targetLocations: ["Rancho Cucamonga", "Upland", "Ontario"], targetKeywords: ["epoxy garage floor", "garage floor coating"], adCopy: "Transform your garage with premium epoxy coating" },
-  { id: "c2", name: "Facebook - Restaurant Floors", platform: "facebook", status: "active", type: "Feed", budget: 800, budgetType: "total", spend: 523.10, impressions: 18200, clicks: 312, conversions: 18, startDate: "2025-04-15", endDate: "2025-06-15", targetLocations: ["Fontana", "Ontario", "Pomona"], targetKeywords: ["restaurant flooring", "commercial epoxy"], adCopy: "Food-safe, slip-resistant epoxy floors" },
-  { id: "c3", name: "Instagram - Before/After Showcase", platform: "instagram", status: "paused", type: "Story", budget: 600, budgetType: "total", spend: 290.00, impressions: 31500, clicks: 720, conversions: 8, startDate: "2025-03-01", endDate: "2025-05-01", targetLocations: ["Claremont", "La Verne", "San Dimas"], targetKeywords: ["floor transformation", "epoxy before after"], adCopy: "See the incredible transformation" },
-  { id: "c4", name: "Nextdoor - Local Specials", platform: "nextdoor", status: "completed", type: "Post", budget: 300, budgetType: "total", spend: 300.00, impressions: 8900, clicks: 245, conversions: 15, startDate: "2025-02-01", endDate: "2025-03-31", targetLocations: ["Rancho Cucamonga", "Upland"], targetKeywords: ["local epoxy", "floor coating near me"], adCopy: "Your neighbor's floors never looked better" },
-  { id: "c5", name: "Yelp Ads - Brand Awareness", platform: "yelp", status: "draft", type: "Sponsored", budget: 500, budgetType: "daily", spend: 0, impressions: 0, clicks: 0, conversions: 0, startDate: "2025-06-01", endDate: "2025-08-31", targetLocations: ["Diamond Bar", "Chino Hills"], targetKeywords: ["yelp epoxy", "floor coating reviews"], adCopy: "5-star rated epoxy flooring company" },
-  { id: "c6", name: "Google - Commercial Buildings", platform: "google", status: "active", type: "Search", budget: 2000, budgetType: "total", spend: 1120.30, impressions: 15800, clicks: 380, conversions: 22, startDate: "2025-03-15", endDate: "2025-06-30", targetLocations: ["Ontario", "Fontana", "Pomona", "Chino"], targetKeywords: ["commercial epoxy flooring", "warehouse floor coating"], adCopy: "Industrial-grade epoxy for commercial spaces" },
-];
+// ─── Placeholder Data (empty — real data comes from API) ──────────
+const MOCK_CAMPAIGNS: Campaign[] = [];
 
-const MOCK_DAILY_DATA = Array.from({ length: 30 }, (_, i) => {
-  const d = new Date(); d.setDate(d.getDate() - 29 + i);
-  return {
-    date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    impressions: Math.floor(2000 + Math.random() * 3000),
-    clicks: Math.floor(40 + Math.random() * 120),
-  };
-});
+const MOCK_DAILY_DATA: { date: string; impressions: number; clicks: number }[] = [];
 
-const FUNNEL_DATA = [
-  { name: "Impressions", value: 98700, fill: "#f59e0b" },
-  { name: "Clicks", value: 2143, fill: "#eab308" },
-  { name: "Landing Page", value: 1680, fill: "#d97706" },
-  { name: "Quote Form", value: 420, fill: "#b45309" },
-  { name: "Lead", value: 95, fill: "#92400e" },
-];
+const FUNNEL_DATA: { name: string; value: number; fill: string }[] = [];
 
 // ─── Helpers ────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString();
