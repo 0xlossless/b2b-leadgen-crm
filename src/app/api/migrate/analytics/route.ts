@@ -12,15 +12,17 @@ export async function POST() {
   }
 
   // Supabase direct connection may not work from serverless — use pooler
-  // Replace db.xxx.supabase.co with aws-0-xxx.pooler.supabase.com:6543 if needed
+  // The pooler URL format is: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
   if (databaseUrl.includes("db.") && databaseUrl.includes(".supabase.co")) {
-    // Extract the project ref
-    const match = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
-    if (match) {
-      // Use the transaction pooler endpoint instead
+    // Extract the project ref from the URL
+    const refMatch = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
+    if (refMatch) {
+      const ref = refMatch[1];
+      // Try common Supabase regions for pooler
       databaseUrl = databaseUrl
-        .replace(`db.${match[1]}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
-        .replace(`db.${match[1]}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`);
+        .replace(/postgres:\/\/postgres:/, `postgresql://postgres.${ref}:`)
+        .replace(`db.${ref}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
+        .replace(`db.${ref}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`);
     }
   }
 
