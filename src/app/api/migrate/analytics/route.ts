@@ -12,8 +12,14 @@ export async function POST() {
   }
 
   // Debug: extract host info before any transformations
-  const origUrlObj = new URL(databaseUrl.replace('postgresql://', 'http://').replace('postgres://', 'http://'));
-  const origHost = origUrlObj.hostname;
+  function safeParseUrl(u: string) {
+    return new URL(u.replace(/^postgres(ql)?:\/\//, 'http://'));
+  }
+  
+  let origHost = '';
+  try {
+    origHost = safeParseUrl(databaseUrl).hostname;
+  } catch { origHost = 'parse-error'; }
 
   // Supabase direct connection may not work from serverless — use pooler
   // The pooler URL format is: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
@@ -31,13 +37,16 @@ export async function POST() {
   }
 
   // Debug: extract host info after transformations
-  const newUrlObj = new URL(databaseUrl.replace('postgresql://', 'http://').replace('postgres://', 'http://'));
-  const debugInfo = { 
-    originalHost: origHost, 
-    newHost: newUrlObj.hostname, 
-    newPort: newUrlObj.port, 
-    newUser: newUrlObj.username 
-  };
+  let debugInfo: Record<string, string> = { originalHost: origHost };
+  try {
+    const newUrlObj = safeParseUrl(databaseUrl);
+    debugInfo = { 
+      originalHost: origHost, 
+      newHost: newUrlObj.hostname, 
+      newPort: newUrlObj.port, 
+      newUser: newUrlObj.username 
+    };
+  } catch { debugInfo.parseError = 'true'; }
 
   const sql = postgres(databaseUrl, { ssl: "require" });
 
