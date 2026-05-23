@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect, useCallback } from "react";
 import {
   AreaChart,
   Area,
@@ -22,77 +23,103 @@ import {
   Smartphone,
   Tablet,
   TrendingUp,
+  Code,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  AlertCircle,
+  Database,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-// ---------- Mock Data ----------
+// ---------- Types ----------
 
-const trafficData = [
-  { date: "Apr 23", visitors: 78, pageViews: 210 },
-  { date: "Apr 24", visitors: 92, pageViews: 265 },
-  { date: "Apr 25", visitors: 105, pageViews: 298 },
-  { date: "Apr 26", visitors: 45, pageViews: 118 },
-  { date: "Apr 27", visitors: 38, pageViews: 95 },
-  { date: "Apr 28", visitors: 88, pageViews: 245 },
-  { date: "Apr 29", visitors: 97, pageViews: 278 },
-  { date: "Apr 30", visitors: 110, pageViews: 312 },
-  { date: "May 1", visitors: 115, pageViews: 330 },
-  { date: "May 2", visitors: 102, pageViews: 290 },
-  { date: "May 3", visitors: 48, pageViews: 125 },
-  { date: "May 4", visitors: 42, pageViews: 108 },
-  { date: "May 5", visitors: 95, pageViews: 268 },
-  { date: "May 6", visitors: 108, pageViews: 305 },
-  { date: "May 7", visitors: 118, pageViews: 342 },
-  { date: "May 8", visitors: 125, pageViews: 358 },
-  { date: "May 9", visitors: 112, pageViews: 318 },
-  { date: "May 10", visitors: 52, pageViews: 138 },
-  { date: "May 11", visitors: 44, pageViews: 112 },
-  { date: "May 12", visitors: 98, pageViews: 275 },
-  { date: "May 13", visitors: 106, pageViews: 298 },
-  { date: "May 14", visitors: 120, pageViews: 348 },
-  { date: "May 15", visitors: 132, pageViews: 382 },
-  { date: "May 16", visitors: 115, pageViews: 325 },
-  { date: "May 17", visitors: 55, pageViews: 145 },
-  { date: "May 18", visitors: 48, pageViews: 120 },
-  { date: "May 19", visitors: 102, pageViews: 288 },
-  { date: "May 20", visitors: 114, pageViews: 322 },
-  { date: "May 21", visitors: 128, pageViews: 368 },
-  { date: "May 22", visitors: 95, pageViews: 270 },
+interface AnalyticsData {
+  kpis: {
+    totalVisitors: number;
+    visitorsChange: number;
+    totalPageViews: number;
+    pageViewsChange: number;
+    avgDurationSeconds: number;
+    durationChange: number;
+    bounceRate: number;
+    bounceRateChange: number;
+  };
+  dailyTraffic: Array<{
+    date: string;
+    label: string;
+    visitors: number;
+    pageViews: number;
+  }>;
+  topPages: Array<{
+    path: string;
+    views: number;
+    uniqueVisitors: number;
+    avgDuration: number;
+    bounceRate: number;
+  }>;
+  trafficSources: Array<{
+    source: string;
+    count: number;
+    percentage: number;
+  }>;
+  devices: Array<{ device: string; count: number; percentage: number }>;
+  liveVisitors: number;
+}
+
+// ---------- Helpers ----------
+
+function formatDuration(seconds: number): string {
+  if (seconds <= 0) return "0s";
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  if (m === 0) return `${s}s`;
+  return `${m}m ${s}s`;
+}
+
+function formatNumber(n: number): string {
+  return n.toLocaleString();
+}
+
+const PIE_COLORS = [
+  "#C9A84C",
+  "#a1a1aa",
+  "#D4B96A",
+  "#71717a",
+  "#52525b",
+  "#E8D48B",
+  "#3f3f46",
+  "#9CA38F",
 ];
 
-const topPages = [
-  { page: "/", label: "Homepage", views: 3245, unique: 1890, avgTime: "1m 48s", bounce: "28.4%" },
-  { page: "/services", label: "Services", views: 1876, unique: 1102, avgTime: "3m 12s", bounce: "22.1%" },
-  { page: "/gallery", label: "Gallery", views: 1340, unique: 845, avgTime: "4m 05s", bounce: "18.7%" },
-  { page: "/contact", label: "Contact", views: 892, unique: 654, avgTime: "2m 22s", bounce: "35.6%" },
-  { page: "/about", label: "About Us", views: 645, unique: 412, avgTime: "2m 45s", bounce: "42.3%" },
-  { page: "/quote", label: "Get a Quote", views: 434, unique: 318, avgTime: "5m 18s", bounce: "12.8%" },
-];
-
-const trafficSources = [
-  { name: "Google Organic", value: 42, color: "#C9A84C" },
-  { name: "Direct", value: 28, color: "#a1a1aa" },
-  { name: "Google Ads", value: 15, color: "#D4B96A" },
-  { name: "Social Media", value: 10, color: "#71717a" },
-  { name: "Referral", value: 5, color: "#52525b" },
-];
-
-const devices = [
-  { name: "Desktop", percent: 58, icon: Monitor },
-  { name: "Mobile", percent: 35, icon: Smartphone },
-  { name: "Tablet", percent: 7, icon: Tablet },
-];
+const DEVICE_ICONS: Record<
+  string,
+  React.ComponentType<{ className?: string }>
+> = {
+  desktop: Monitor,
+  mobile: Smartphone,
+  tablet: Tablet,
+};
 
 // ---------- Custom Tooltip ----------
 
-function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) {
+function ChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: Array<{ value: number; dataKey: string; color: string }>;
+  label?: string;
+}) {
   if (!active || !payload || !payload.length) return null;
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 shadow-xl">
       <p className="mb-1 text-xs font-medium text-zinc-400">{label}</p>
       {payload.map((entry, i) => (
         <p key={i} className="text-sm" style={{ color: entry.color }}>
-          {entry.dataKey === "visitors" ? "Visitors" : "Page Views"}: <span className="font-semibold text-zinc-100">{entry.value}</span>
+          {entry.dataKey === "visitors" ? "Visitors" : "Page Views"}:{" "}
+          <span className="font-semibold text-zinc-100">{entry.value}</span>
         </p>
       ))}
     </div>
@@ -148,9 +175,291 @@ function KpiCard({
   );
 }
 
+// ---------- Loading Skeleton ----------
+
+function SkeletonPulse({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded bg-zinc-800 ${className ?? ""}`}
+    />
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <section className="space-y-6">
+      <div className="border-t border-zinc-800 pt-8">
+        <div className="flex items-center gap-3">
+          <SkeletonPulse className="h-10 w-10 rounded-lg" />
+          <div className="space-y-2">
+            <SkeletonPulse className="h-5 w-48" />
+            <SkeletonPulse className="h-3 w-64" />
+          </div>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i} className="bg-zinc-900 border-zinc-800">
+            <CardContent className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <SkeletonPulse className="h-10 w-10 rounded-lg" />
+                <SkeletonPulse className="h-5 w-16 rounded-full" />
+              </div>
+              <SkeletonPulse className="h-7 w-24" />
+              <SkeletonPulse className="h-3 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardContent className="p-6">
+          <SkeletonPulse className="h-[300px] w-full rounded-lg" />
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ---------- Migration Card ----------
+
+function MigrationCard({
+  onMigrate,
+}: {
+  onMigrate: () => Promise<void>;
+}) {
+  const [migrating, setMigrating] = useState(false);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+    sql?: string;
+  } | null>(null);
+
+  async function handleMigrate() {
+    setMigrating(true);
+    setResult(null);
+    try {
+      await onMigrate();
+      const resp = await fetch("/api/migrate/analytics", { method: "POST" });
+      const data = await resp.json();
+      setResult(data);
+    } catch {
+      setResult({ success: false, message: "Request failed" });
+    } finally {
+      setMigrating(false);
+    }
+  }
+
+  return (
+    <section className="space-y-6">
+      <div className="border-t border-zinc-800 pt-8">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#C9A84C]/10">
+            <Globe className="h-5 w-5 text-[#C9A84C]" />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-zinc-100">
+              Website Analytics
+            </h2>
+            <p className="text-sm text-zinc-500">Setup required</p>
+          </div>
+        </div>
+      </div>
+      <Card className="bg-zinc-900 border-zinc-800">
+        <CardContent className="p-8 text-center space-y-4">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
+            <Database className="h-8 w-8 text-[#C9A84C]" />
+          </div>
+          <h3 className="text-lg font-semibold text-zinc-100">
+            Database Setup Required
+          </h3>
+          <p className="text-sm text-zinc-400 max-w-md mx-auto">
+            The <code className="text-[#C9A84C]">page_views</code> table
+            needs to be created in Supabase before analytics can be tracked.
+          </p>
+          <button
+            onClick={handleMigrate}
+            disabled={migrating}
+            className="inline-flex items-center gap-2 rounded-lg bg-[#C9A84C] px-5 py-2.5 text-sm font-medium text-zinc-900 transition-colors hover:bg-[#D4B96A] disabled:opacity-50"
+          >
+            {migrating ? (
+              <RefreshCw className="h-4 w-4 animate-spin" />
+            ) : (
+              <Database className="h-4 w-4" />
+            )}
+            {migrating ? "Running migration..." : "Create Table"}
+          </button>
+          {result && (
+            <div className="mt-4 text-left max-w-lg mx-auto">
+              {result.success ? (
+                <div className="rounded-lg border border-emerald-800/50 bg-emerald-900/20 p-4">
+                  <p className="text-sm text-emerald-400">
+                    ✓ {result.message}
+                  </p>
+                  <p className="mt-2 text-xs text-zinc-400">
+                    Refresh the page to see the analytics dashboard.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-zinc-700 bg-zinc-800 p-4 space-y-3">
+                  <div className="flex items-center gap-2 text-amber-400">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-sm font-medium">
+                      {result.message}
+                    </span>
+                  </div>
+                  {result.sql && (
+                    <pre className="overflow-x-auto rounded bg-zinc-900 p-3 text-xs text-zinc-300">
+                      {result.sql}
+                    </pre>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </section>
+  );
+}
+
+// ---------- Empty State ----------
+
+function EmptyState() {
+  const [showSetup, setShowSetup] = useState(false);
+
+  return (
+    <Card className="bg-zinc-900 border-zinc-800">
+      <CardContent className="p-8 text-center space-y-4">
+        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-zinc-800">
+          <Globe className="h-8 w-8 text-[#C9A84C] animate-pulse" />
+        </div>
+        <h3 className="text-lg font-semibold text-zinc-100">
+          Waiting for first visitor...
+        </h3>
+        <p className="text-sm text-zinc-400 max-w-md mx-auto">
+          No page views recorded yet. Add the tracking script to your website
+          to start collecting analytics data.
+        </p>
+        <button
+          onClick={() => setShowSetup(!showSetup)}
+          className="inline-flex items-center gap-2 text-sm text-[#C9A84C] hover:text-[#D4B96A] transition-colors"
+        >
+          <Code className="h-4 w-4" />
+          Setup Instructions
+          {showSetup ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+        </button>
+        {showSetup && (
+          <div className="mt-2 text-left max-w-lg mx-auto rounded-lg border border-zinc-700 bg-zinc-800 p-4 space-y-3">
+            <p className="text-xs text-zinc-400">
+              Add this to your website&apos;s{" "}
+              <code className="text-[#C9A84C]">&lt;head&gt;</code> tag:
+            </p>
+            <pre className="overflow-x-auto rounded bg-zinc-900 p-3 text-xs text-emerald-400">
+              {`<script src="https://b2b-leadgen-kappa.vercel.app/tracker.js" defer></script>`}
+            </pre>
+            <p className="text-[11px] text-zinc-500">
+              The script is lightweight (~1KB), non-blocking, and privacy-friendly.
+              No cookies are used.
+            </p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ---------- Main Component ----------
 
 export function WebsiteAnalytics() {
+  const [data, setData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [needsMigration, setNeedsMigration] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      const resp = await fetch("/api/analytics/website");
+      if (!resp.ok) throw new Error("Failed to fetch analytics");
+      const json = await resp.json();
+
+      if (json.needsMigration) {
+        setNeedsMigration(true);
+        setData(null);
+      } else {
+        setNeedsMigration(false);
+        setData(json.data);
+      }
+      setError(null);
+    } catch (e) {
+      console.error("Analytics fetch error:", e);
+      setError(e instanceof Error ? e.message : "Unknown error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 60_000); // auto-refresh every 60s
+    return () => clearInterval(interval);
+  }, [fetchData]);
+
+  // Loading state
+  if (loading) return <LoadingSkeleton />;
+
+  // Migration needed
+  if (needsMigration) {
+    return (
+      <MigrationCard
+        onMigrate={async () => {
+          /* Migration is handled inside the card */
+        }}
+      />
+    );
+  }
+
+  // Error state
+  if (error && !data) {
+    return (
+      <section className="space-y-6">
+        <div className="border-t border-zinc-800 pt-8">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
+              <AlertCircle className="h-5 w-5 text-red-400" />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold text-zinc-100">
+                Website Analytics
+              </h2>
+              <p className="text-sm text-red-400">{error}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const kpis = data?.kpis;
+  const hasData = (kpis?.totalVisitors ?? 0) > 0 || (kpis?.totalPageViews ?? 0) > 0;
+
+  // Build chart-friendly data for traffic sources pie
+  const pieData = (data?.trafficSources || []).map((s, i) => ({
+    name: s.source,
+    value: s.percentage,
+    color: PIE_COLORS[i % PIE_COLORS.length],
+  }));
+
+  // Build device data with icons
+  const deviceData = (data?.devices || []).map((d) => ({
+    name: d.device.charAt(0).toUpperCase() + d.device.slice(1),
+    percent: d.percentage,
+    icon: DEVICE_ICONS[d.device] || Monitor,
+  }));
+
   return (
     <section className="space-y-6">
       {/* Section Header */}
@@ -176,7 +485,10 @@ export function WebsiteAnalytics() {
               <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
             </span>
             <span className="text-xs font-medium text-zinc-400">
-              <span className="text-emerald-400">12</span> visitors online now
+              <span className="text-emerald-400">
+                {data?.liveVisitors ?? 0}
+              </span>{" "}
+              visitor{(data?.liveVisitors ?? 0) !== 1 ? "s" : ""} online now
             </span>
           </div>
         </div>
@@ -186,308 +498,337 @@ export function WebsiteAnalytics() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Total Visitors"
-          value="2,847"
-          change="12.3%"
+          value={formatNumber(kpis?.totalVisitors ?? 0)}
+          change={`${Math.abs(kpis?.visitorsChange ?? 0)}%`}
           changeLabel="vs last month"
           icon={TrendingUp}
-          positive={true}
+          positive={(kpis?.visitorsChange ?? 0) >= 0}
         />
         <KpiCard
           title="Page Views"
-          value="8,432"
-          change="18.7%"
+          value={formatNumber(kpis?.totalPageViews ?? 0)}
+          change={`${Math.abs(kpis?.pageViewsChange ?? 0)}%`}
           changeLabel="vs last month"
           icon={Eye}
-          positive={true}
+          positive={(kpis?.pageViewsChange ?? 0) >= 0}
         />
         <KpiCard
           title="Avg Session Duration"
-          value="2m 34s"
-          change="5.2%"
+          value={formatDuration(kpis?.avgDurationSeconds ?? 0)}
+          change={`${Math.abs(kpis?.durationChange ?? 0)}%`}
           changeLabel="vs last month"
           icon={Clock}
-          positive={true}
+          positive={(kpis?.durationChange ?? 0) >= 0}
         />
         <KpiCard
           title="Bounce Rate"
-          value="34.2%"
-          change="3.1%"
+          value={`${kpis?.bounceRate ?? 0}%`}
+          change={`${Math.abs(kpis?.bounceRateChange ?? 0)}%`}
           changeLabel="lower is better"
           icon={ArrowDownRight}
-          positive={true}
+          positive={(kpis?.bounceRateChange ?? 0) <= 0}
         />
       </div>
 
-      {/* Traffic Over Time Chart */}
-      <Card className="bg-zinc-900 border-zinc-800">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-zinc-100">
-            Traffic Over Time
-          </CardTitle>
-          <p className="text-xs text-zinc-500">Daily visitors and page views</p>
-        </CardHeader>
-        <CardContent>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart
-                data={trafficData}
-                margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
-              >
-                <defs>
-                  <linearGradient
-                    id="visitorsGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor="#C9A84C"
-                      stopOpacity={0.3}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="#C9A84C"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                  <linearGradient
-                    id="pageViewsGradient"
-                    x1="0"
-                    y1="0"
-                    x2="0"
-                    y2="1"
-                  >
-                    <stop
-                      offset="5%"
-                      stopColor="#a1a1aa"
-                      stopOpacity={0.15}
-                    />
-                    <stop
-                      offset="95%"
-                      stopColor="#a1a1aa"
-                      stopOpacity={0}
-                    />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#27272a"
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: "#71717a", fontSize: 11 }}
-                  axisLine={{ stroke: "#3f3f46" }}
-                  tickLine={false}
-                  interval={4}
-                />
-                <YAxis
-                  tick={{ fill: "#71717a", fontSize: 11 }}
-                  axisLine={{ stroke: "#3f3f46" }}
-                  tickLine={false}
-                  allowDecimals={false}
-                />
-                <Tooltip
-                  content={<ChartTooltip />}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="pageViews"
-                  stroke="#a1a1aa"
-                  strokeWidth={1.5}
-                  fill="url(#pageViewsGradient)"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="visitors"
-                  stroke="#C9A84C"
-                  strokeWidth={2}
-                  fill="url(#visitorsGradient)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="mt-3 flex items-center gap-6 text-xs text-zinc-500">
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#C9A84C]" />
-              Visitors
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
-              Page Views
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Empty state with setup instructions */}
+      {!hasData && <EmptyState />}
 
-      {/* Two-column: Top Pages + Traffic Sources & Devices */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Top Pages Table */}
-        <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
+      {/* Traffic Over Time Chart */}
+      {hasData && (
+        <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-semibold text-zinc-100">
-              Top Pages
+              Traffic Over Time
             </CardTitle>
-            <p className="text-xs text-zinc-500">Most visited pages this month</p>
+            <p className="text-xs text-zinc-500">
+              Daily visitors and page views
+            </p>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-zinc-800 text-left">
-                    <th className="pb-3 pr-4 text-xs font-medium text-zinc-500">
-                      Page
-                    </th>
-                    <th className="pb-3 pr-4 text-right text-xs font-medium text-zinc-500">
-                      Views
-                    </th>
-                    <th className="hidden pb-3 pr-4 text-right text-xs font-medium text-zinc-500 sm:table-cell">
-                      Unique
-                    </th>
-                    <th className="hidden pb-3 pr-4 text-right text-xs font-medium text-zinc-500 md:table-cell">
-                      Avg Time
-                    </th>
-                    <th className="pb-3 text-right text-xs font-medium text-zinc-500">
-                      Bounce
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topPages.map((row) => (
-                    <tr
-                      key={row.page}
-                      className="border-b border-zinc-800/50 last:border-0"
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart
+                  data={data?.dailyTraffic ?? []}
+                  margin={{ top: 8, right: 8, left: -12, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient
+                      id="visitorsGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
                     >
-                      <td className="py-3 pr-4">
-                        <div>
-                          <span className="font-medium text-zinc-200">
-                            {row.label}
-                          </span>
-                          <span className="ml-2 text-xs text-zinc-600">
-                            {row.page}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 pr-4 text-right font-medium text-zinc-300">
-                        {row.views.toLocaleString()}
-                      </td>
-                      <td className="hidden py-3 pr-4 text-right text-zinc-400 sm:table-cell">
-                        {row.unique.toLocaleString()}
-                      </td>
-                      <td className="hidden py-3 pr-4 text-right text-zinc-400 md:table-cell">
-                        {row.avgTime}
-                      </td>
-                      <td className="py-3 text-right text-zinc-400">
-                        {row.bounce}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      <stop
+                        offset="5%"
+                        stopColor="#C9A84C"
+                        stopOpacity={0.3}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="#C9A84C"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                    <linearGradient
+                      id="pageViewsGradient"
+                      x1="0"
+                      y1="0"
+                      x2="0"
+                      y2="1"
+                    >
+                      <stop
+                        offset="5%"
+                        stopColor="#a1a1aa"
+                        stopOpacity={0.15}
+                      />
+                      <stop
+                        offset="95%"
+                        stopColor="#a1a1aa"
+                        stopOpacity={0}
+                      />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#27272a"
+                    vertical={false}
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    axisLine={{ stroke: "#3f3f46" }}
+                    tickLine={false}
+                    interval={4}
+                  />
+                  <YAxis
+                    tick={{ fill: "#71717a", fontSize: 11 }}
+                    axisLine={{ stroke: "#3f3f46" }}
+                    tickLine={false}
+                    allowDecimals={false}
+                  />
+                  <Tooltip content={<ChartTooltip />} />
+                  <Area
+                    type="monotone"
+                    dataKey="pageViews"
+                    stroke="#a1a1aa"
+                    strokeWidth={1.5}
+                    fill="url(#pageViewsGradient)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="visitors"
+                    stroke="#C9A84C"
+                    strokeWidth={2}
+                    fill="url(#visitorsGradient)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-3 flex items-center gap-6 text-xs text-zinc-500">
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-[#C9A84C]" />
+                Visitors
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+                Page Views
+              </div>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Right column: Traffic Sources + Device Breakdown */}
-        <div className="flex flex-col gap-4">
-          {/* Traffic Sources Pie */}
-          <Card className="bg-zinc-900 border-zinc-800">
+      {/* Two-column: Top Pages + Traffic Sources & Devices */}
+      {hasData && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* Top Pages Table */}
+          <Card className="bg-zinc-900 border-zinc-800 lg:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold text-zinc-100">
-                Traffic Sources
+                Top Pages
               </CardTitle>
+              <p className="text-xs text-zinc-500">
+                Most visited pages this month
+              </p>
             </CardHeader>
             <CardContent>
-              <div className="h-[200px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={trafficSources}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={80}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {trafficSources.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+              {(data?.topPages?.length ?? 0) === 0 ? (
+                <p className="py-8 text-center text-sm text-zinc-500">
+                  No page data yet
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-zinc-800 text-left">
+                        <th className="pb-3 pr-4 text-xs font-medium text-zinc-500">
+                          Page
+                        </th>
+                        <th className="pb-3 pr-4 text-right text-xs font-medium text-zinc-500">
+                          Views
+                        </th>
+                        <th className="hidden pb-3 pr-4 text-right text-xs font-medium text-zinc-500 sm:table-cell">
+                          Unique
+                        </th>
+                        <th className="hidden pb-3 pr-4 text-right text-xs font-medium text-zinc-500 md:table-cell">
+                          Avg Time
+                        </th>
+                        <th className="pb-3 text-right text-xs font-medium text-zinc-500">
+                          Bounce
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(data?.topPages ?? []).map((row) => (
+                        <tr
+                          key={row.path}
+                          className="border-b border-zinc-800/50 last:border-0"
+                        >
+                          <td className="py-3 pr-4">
+                            <span className="font-medium text-zinc-200">
+                              {row.path}
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-right font-medium text-zinc-300">
+                            {row.views.toLocaleString()}
+                          </td>
+                          <td className="hidden py-3 pr-4 text-right text-zinc-400 sm:table-cell">
+                            {row.uniqueVisitors.toLocaleString()}
+                          </td>
+                          <td className="hidden py-3 pr-4 text-right text-zinc-400 md:table-cell">
+                            {formatDuration(row.avgDuration)}
+                          </td>
+                          <td className="py-3 text-right text-zinc-400">
+                            {row.bounceRate}%
+                          </td>
+                        </tr>
                       ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "#18181b",
-                        border: "1px solid #3f3f46",
-                        borderRadius: "8px",
-                        color: "#f4f4f5",
-                        fontSize: "12px",
-                      }}
-                      formatter={(value) => [`${value}%`, ""]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="mt-2 space-y-1.5">
-                {trafficSources.map((source) => (
-                  <div
-                    key={source.name}
-                    className="flex items-center justify-between text-xs"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="h-2.5 w-2.5 rounded-full"
-                        style={{ backgroundColor: source.color }}
-                      />
-                      <span className="text-zinc-400">{source.name}</span>
-                    </div>
-                    <span className="font-medium text-zinc-300">
-                      {source.value}%
-                    </span>
-                  </div>
-                ))}
-              </div>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Device Breakdown */}
-          <Card className="bg-zinc-900 border-zinc-800">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base font-semibold text-zinc-100">
-                Devices
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {devices.map((device) => {
-                  const DeviceIcon = device.icon;
-                  return (
-                    <div key={device.name} className="space-y-1.5">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-zinc-400">
-                          <DeviceIcon className="h-4 w-4" />
-                          <span>{device.name}</span>
-                        </div>
-                        <span className="font-medium text-zinc-200">
-                          {device.percent}%
-                        </span>
-                      </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                        <div
-                          className="h-full rounded-full bg-[#C9A84C] transition-all"
-                          style={{ width: `${device.percent}%` }}
-                        />
-                      </div>
+          {/* Right column: Traffic Sources + Device Breakdown */}
+          <div className="flex flex-col gap-4">
+            {/* Traffic Sources Pie */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-zinc-100">
+                  Traffic Sources
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {pieData.length === 0 ? (
+                  <p className="py-8 text-center text-sm text-zinc-500">
+                    No source data yet
+                  </p>
+                ) : (
+                  <>
+                    <div className="h-[200px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={pieData}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={55}
+                            outerRadius={80}
+                            paddingAngle={3}
+                            dataKey="value"
+                            stroke="none"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.color}
+                              />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: "#18181b",
+                              border: "1px solid #3f3f46",
+                              borderRadius: "8px",
+                              color: "#f4f4f5",
+                              fontSize: "12px",
+                            }}
+                            formatter={(value) => [`${value}%`, ""]}
+                          />
+                        </PieChart>
+                      </ResponsiveContainer>
                     </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
+                    <div className="mt-2 space-y-1.5">
+                      {pieData.map((source) => (
+                        <div
+                          key={source.name}
+                          className="flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="h-2.5 w-2.5 rounded-full"
+                              style={{ backgroundColor: source.color }}
+                            />
+                            <span className="text-zinc-400">
+                              {source.name}
+                            </span>
+                          </div>
+                          <span className="font-medium text-zinc-300">
+                            {source.value}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Device Breakdown */}
+            <Card className="bg-zinc-900 border-zinc-800">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-zinc-100">
+                  Devices
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {deviceData.length === 0 ? (
+                  <p className="py-4 text-center text-sm text-zinc-500">
+                    No device data yet
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {deviceData.map((device) => {
+                      const DeviceIcon = device.icon;
+                      return (
+                        <div key={device.name} className="space-y-1.5">
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 text-zinc-400">
+                              <DeviceIcon className="h-4 w-4" />
+                              <span>{device.name}</span>
+                            </div>
+                            <span className="font-medium text-zinc-200">
+                              {device.percent}%
+                            </span>
+                          </div>
+                          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+                            <div
+                              className="h-full rounded-full bg-[#C9A84C] transition-all"
+                              style={{ width: `${device.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </section>
   );
 }
