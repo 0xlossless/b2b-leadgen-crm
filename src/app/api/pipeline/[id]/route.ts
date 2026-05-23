@@ -11,6 +11,10 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    
+    // Debug: log which key type is being used
+    const isServiceRole = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    console.log(`[pipeline PATCH] Using ${isServiceRole ? 'SERVICE_ROLE' : 'ANON'} key`);
 
     // ---------- Handle qualification tier ----------
     if (qualificationTier && qualificationTier in QUALIFICATION_TIERS) {
@@ -129,6 +133,41 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (!deal) {
       return NextResponse.json({ error: "Deal not found" }, { status: 404 });
+    }
+
+    // VERIFY the update actually persisted (Supabase can silently fail)
+    const verifyRes = await fetch(`${url}/rest/v1/deals?id=eq.${params.id}&select=id,stage,deal_value,close_date`, {
+      headers: {
+        "apikey": serviceKey,
+        "Authorization": `Bearer ${serviceKey}`,
+      },
+      cache: "no-store",
+    });
+    const verifyRows = await verifyRes.json();
+    const verified = verifyRows?.[0];
+    
+    if (verified && stage && verified.stage !== stage) {
+      console.error(`[pipeline PATCH] UPDATE DID NOT PERSIST! Sent stage=${stage}, DB still has stage=${verified.stage}. Key type: ${process.env.SUPABASE_SERVICE_ROLE_KEY ? 'SERVICE_ROLE' : 'ANON'}`);
+      
+      // Retry with explicit RLS bypass hint
+      const retryRes = await fetch(`${url}/rest/v1/deals?id=eq.${params.id}`, {
+        method: "PATCH",
+        headers: {
+          "apikey": serviceKey,
+          "Authorization": `Bearer ${serviceKey}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal",
+        },
+        body: JSON.stringify(updates),
+      });
+      
+      if (!retryRes.ok) {
+        console.error("[pipeline PATCH] Retry also failed:", await retryRes.text());
+        return NextResponse.json({ 
+          error: "Deal update failed to persist. This may be a database permissions issue.",
+          debug: { sentStage: stage, actualStage: verified.stage, keyType: process.env.SUPABASE_SERVICE_ROLE_KEY ? 'service_role' : 'anon' }
+        }, { status: 500 });
+      }
     }
 
     // Log activity
