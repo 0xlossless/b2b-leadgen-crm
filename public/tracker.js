@@ -26,13 +26,20 @@
     utmCampaign: params.get("utm_campaign")
   };
 
-  // Use sendBeacon for reliability, fallback to fetch
   function send(payload) {
     var json = JSON.stringify(payload);
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon(ENDPOINT, new Blob([json], { type: "application/json" }));
-    } else {
-      fetch(ENDPOINT, { method: "POST", body: json, headers: { "Content-Type": "application/json" }, keepalive: true });
+    try {
+      fetch(ENDPOINT, {
+        method: "POST",
+        body: json,
+        headers: { "Content-Type": "application/json" },
+        keepalive: true
+      }).catch(function() {});
+    } catch(e) {
+      // Fallback to sendBeacon
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(ENDPOINT, new Blob([json], { type: "application/json" }));
+      }
     }
   }
 
@@ -44,15 +51,22 @@
     if (sent) return;
     sent = true;
     var duration = Math.round((Date.now() - startTime) / 1000);
-    send({
+    var json = JSON.stringify({
       sessionId: sid,
       pagePath: window.location.pathname,
       durationSeconds: duration,
       isBounce: pageCount <= 1
     });
+    // On unload, sendBeacon is more reliable than fetch
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(ENDPOINT, new Blob([json], { type: "application/json" }));
+    } else {
+      try {
+        fetch(ENDPOINT, { method: "POST", body: json, headers: { "Content-Type": "application/json" }, keepalive: true });
+      } catch(e) {}
+    }
   }
 
-  // Use visibilitychange + pagehide for maximum coverage
   document.addEventListener("visibilitychange", function() {
     if (document.visibilityState === "hidden") onLeave();
   });
