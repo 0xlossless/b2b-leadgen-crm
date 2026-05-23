@@ -1254,10 +1254,8 @@ function MarketingPageInner() {
                 <p className="text-xs text-zinc-500">Sync campaigns, view real analytics, and manage ads directly from your CRM.</p>
               </div>
             </div>
-            <Button asChild className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => window.location.href = "/api/google-ads/auth"}>
-              <span>
-                <Link className="h-4 w-4 mr-2 inline" /> Connect Google Ads
-              </span>
+            <Button className="bg-amber-500 hover:bg-amber-600 text-black font-semibold" onClick={() => window.location.href = "/api/google-ads/auth"}>
+              Connect Google Ads
             </Button>
           </div>
         )
