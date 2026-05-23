@@ -11,20 +11,33 @@ export async function POST() {
     );
   }
 
+  // Debug: extract host info before any transformations
+  const origUrlObj = new URL(databaseUrl.replace('postgresql://', 'http://').replace('postgres://', 'http://'));
+  const origHost = origUrlObj.hostname;
+
   // Supabase direct connection may not work from serverless — use pooler
   // The pooler URL format is: postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
-  if (databaseUrl.includes("db.") && databaseUrl.includes(".supabase.co")) {
-    // Extract the project ref from the URL
-    const refMatch = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
+  if (databaseUrl.includes(".supabase.co") && !databaseUrl.includes("pooler.supabase.com")) {
+    // Extract the project ref from the URL (could be db.REF.supabase.co or just REF.supabase.co)
+    const refMatch = databaseUrl.match(/(?:db\.)?([a-z]+)\.supabase\.co/);
     if (refMatch) {
       const ref = refMatch[1];
-      // Try common Supabase regions for pooler
+      // Replace direct host with pooler, add ref to username
       databaseUrl = databaseUrl
-        .replace(/postgres:\/\/postgres:/, `postgresql://postgres.${ref}:`)
-        .replace(`db.${ref}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
-        .replace(`db.${ref}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`);
+        .replace(/postgres(ql)?:\/\/postgres:/, `postgresql://postgres.${ref}:`)
+        .replace(/[a-z.]*\.supabase\.co:\d+/, `aws-0-us-west-1.pooler.supabase.com:6543`)
+        .replace(/[a-z.]*\.supabase\.co/, `aws-0-us-west-1.pooler.supabase.com:6543`);
     }
   }
+
+  // Debug: extract host info after transformations
+  const newUrlObj = new URL(databaseUrl.replace('postgresql://', 'http://').replace('postgres://', 'http://'));
+  const debugInfo = { 
+    originalHost: origHost, 
+    newHost: newUrlObj.hostname, 
+    newPort: newUrlObj.port, 
+    newUser: newUrlObj.username 
+  };
 
   const sql = postgres(databaseUrl, { ssl: "require" });
 
@@ -83,10 +96,11 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       message: "page_views table created with indexes and RLS policies.",
+      debug: debugInfo,
     });
   } catch (e: unknown) {
     await sql.end();
     const msg = e instanceof Error ? e.message : String(e);
-    return NextResponse.json({ success: false, error: msg }, { status: 500 });
+    return NextResponse.json({ success: false, error: msg, debug: debugInfo }, { status: 500 });
   }
 }
