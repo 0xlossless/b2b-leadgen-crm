@@ -376,7 +376,7 @@ function CampaignsTab({ googleAdsConnected, googleCustomerId }: { googleAdsConne
                 <TableHead className="text-zinc-400 text-right">Clicks</TableHead>
                 <TableHead className="text-zinc-400 text-right">CTR</TableHead>
                 <TableHead className="text-zinc-400 text-right">Conversions</TableHead>
-                {googleAdsConnected && <TableHead className="text-zinc-400 text-center">Actions</TableHead>}
+                                <TableHead className="text-zinc-400 text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -412,26 +412,34 @@ function CampaignsTab({ googleAdsConnected, googleCustomerId }: { googleAdsConne
                     <TableCell className="text-right text-zinc-300">{fmt(c.clicks)}</TableCell>
                     <TableCell className="text-right text-amber-400">{ctr(c.clicks, c.impressions)}</TableCell>
                     <TableCell className="text-right text-green-400">{c.conversions}</TableCell>
-                    {googleAdsConnected && (
-                      <TableCell className="text-center" onClick={e => e.stopPropagation()}>
-                        {c.source === "google_ads" && (
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={togglingId === c.googleAdsId}
-                            onClick={() => toggleGoogleAdsCampaign(c)}
-                            className={c.status === "active"
-                              ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 h-7 px-2"
-                              : "text-green-400 hover:text-green-300 hover:bg-green-500/10 h-7 px-2"}>
-                            {togglingId === c.googleAdsId
-                              ? <Loader2 className="h-3 w-3 animate-spin" />
-                              : c.status === "active"
-                                ? <><Pause className="h-3 w-3 mr-1" /> Pause</>
-                                : <><Play className="h-3 w-3 mr-1" /> Resume</>}
-                          </Button>
-                        )}
-                      </TableCell>
-                    )}
+                    <TableCell className="text-center" onClick={e => e.stopPropagation()}>
+                      {(c.status === "active" || c.status === "paused") && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={togglingId === (c.googleAdsId || c.id)}
+                          onClick={() => {
+                            if (c.source === "google_ads" && c.googleAdsId) {
+                              toggleGoogleAdsCampaign(c);
+                            } else {
+                              setCampaigns(prev => prev.map(camp =>
+                                camp.id === c.id
+                                  ? { ...camp, status: camp.status === "active" ? "paused" as CampaignStatus : "active" as CampaignStatus }
+                                  : camp
+                              ));
+                            }
+                          }}
+                          className={c.status === "active"
+                            ? "text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10 h-7 px-2"
+                            : "text-green-400 hover:text-green-300 hover:bg-green-500/10 h-7 px-2"}>
+                          {togglingId === (c.googleAdsId || c.id)
+                            ? <Loader2 className="h-3 w-3 animate-spin" />
+                            : c.status === "active"
+                              ? <><Pause className="h-3 w-3 mr-1" /> Pause</>
+                              : <><Play className="h-3 w-3 mr-1" /> Resume</>}
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                   {expanded === c.id && (
                     <TableRow key={`${c.id}-detail`} className="border-zinc-800 bg-zinc-900/30">
