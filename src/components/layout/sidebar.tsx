@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   LayoutDashboard,
   Users,
   Kanban,
@@ -31,6 +39,9 @@ import {
   ChevronRight,
   Mail,
   LogOut,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -75,7 +86,7 @@ function NavItem({
         "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
         active
           ? "bg-amber-500/15 text-amber-500"
-          : "text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
       )}
     >
       <Icon className={cn("h-5 w-5 shrink-0", active && "text-amber-500")} />
@@ -119,7 +130,7 @@ function SidebarBrand({ collapsed }: { collapsed: boolean }) {
         <Building2 className="h-4 w-4 text-white" />
       </div>
       {!collapsed && (
-        <span className="text-lg font-bold text-zinc-100">GS Epoxy CRM</span>
+        <span className="text-lg font-bold text-foreground">GS Epoxy CRM</span>
       )}
     </div>
   );
@@ -137,7 +148,7 @@ function SignOutButton({ collapsed }: { collapsed: boolean }) {
     <button
       onClick={handleSignOut}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 w-full",
+        "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground w-full",
         collapsed && "justify-center"
       )}
     >
@@ -158,6 +169,37 @@ function SignOutButton({ collapsed }: { collapsed: boolean }) {
   return button;
 }
 
+// ─── Theme Toggle ────────────────────────────────────────
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="sr-only">Toggle theme</span>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover border-border">
+        <DropdownMenuItem onClick={() => setTheme("light")}>
+          <Sun className="h-4 w-4 mr-2" />
+          Light
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("dark")}>
+          <Moon className="h-4 w-4 mr-2" />
+          Dark
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => setTheme("system")}>
+          <Monitor className="h-4 w-4 mr-2" />
+          System
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 // ─── Desktop Sidebar ──────────────────────────────────────
 export function DesktopSidebar() {
   const [collapsed, setCollapsed] = useState(false);
@@ -166,7 +208,7 @@ export function DesktopSidebar() {
     <TooltipProvider>
       <aside
         className={cn(
-          "hidden h-screen flex-col border-r border-zinc-800 bg-zinc-950 transition-all duration-200 lg:flex",
+          "hidden h-screen flex-col border-r border-border bg-card transition-all duration-200 lg:flex",
           collapsed ? "w-[60px]" : "w-[240px]"
         )}
       >
@@ -174,12 +216,12 @@ export function DesktopSidebar() {
         <div className="flex-1 overflow-y-auto py-2">
           <SidebarNav collapsed={collapsed} />
         </div>
-        <div className="border-t border-zinc-800 p-2 space-y-1">
+        <div className="border-t border-border p-2 space-y-1">
           <SignOutButton collapsed={collapsed} />
           <Button
             variant="ghost"
             size="icon"
-            className="w-full text-zinc-400 hover:text-zinc-100"
+            className="w-full text-muted-foreground hover:text-foreground"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
@@ -204,18 +246,18 @@ export function MobileSidebar() {
         <Button
           variant="ghost"
           size="icon"
-          className="lg:hidden text-zinc-400 hover:text-zinc-100"
+          className="lg:hidden text-muted-foreground hover:text-foreground"
         >
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>
-      <SheetContent side="left" className="w-[240px] bg-zinc-950 p-0">
+      <SheetContent side="left" className="w-[240px] bg-card p-0">
         <SheetTitle className="sr-only">Navigation</SheetTitle>
         <SidebarBrand collapsed={false} />
         <div className="flex-1 py-2" onClick={() => setOpen(false)}>
           <SidebarNav collapsed={false} />
         </div>
-        <div className="border-t border-zinc-800 p-2">
+        <div className="border-t border-border p-2">
           <SignOutButton collapsed={false} />
         </div>
       </SheetContent>
@@ -228,26 +270,54 @@ export function Header() {
   const pathname = usePathname();
   const pageTitle = PAGE_TITLES[pathname] ?? "GS Epoxy CRM";
 
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
+
   return (
-    <header className="flex h-14 items-center gap-4 border-b border-zinc-800 bg-zinc-900 px-4 lg:px-6">
+    <header className="flex h-14 items-center gap-4 border-b border-border bg-card px-4 lg:px-6">
       <MobileSidebar />
 
-      <h1 className="text-lg font-semibold text-zinc-100">{pageTitle}</h1>
+      <h1 className="text-lg font-semibold text-foreground">{pageTitle}</h1>
 
-      <div className="ml-auto flex items-center gap-4">
+      <div className="ml-auto flex items-center gap-3">
         <div className="relative hidden sm:block">
-          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search leads..."
-            className="w-[200px] bg-zinc-800 border-zinc-700 pl-8 text-zinc-100 placeholder:text-zinc-500 lg:w-[280px]"
+            className="w-[200px] bg-muted border-border pl-8 text-foreground placeholder:text-muted-foreground lg:w-[280px]"
           />
         </div>
 
-        <Avatar>
-          <AvatarFallback className="bg-amber-500/20 text-amber-500 text-xs font-semibold">
-            JG
-          </AvatarFallback>
-        </Avatar>
+        <ThemeToggle />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="rounded-full focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 focus:ring-offset-background">
+              <Avatar>
+                <AvatarFallback className="bg-amber-500/20 text-amber-500 text-xs font-semibold cursor-pointer">
+                  JG
+                </AvatarFallback>
+              </Avatar>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48 bg-popover border-border">
+            <div className="px-2 py-1.5">
+              <p className="text-sm font-medium text-foreground">Joseph Galindo</p>
+              <p className="text-xs text-muted-foreground">joseph@0xlossless.com</p>
+            </div>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-red-500 focus:text-red-500 cursor-pointer"
+              onClick={handleSignOut}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </header>
   );

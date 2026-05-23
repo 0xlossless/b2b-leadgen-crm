@@ -6,7 +6,7 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
+    --card: 0 0% 98%;
     --card-foreground: 240 10% 3.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
@@ -34,9 +34,9 @@
   .dark {
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
+    --card: 240 6% 6%;
     --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
+    --popover: 240 6% 6%;
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 240 5.9% 10%;
@@ -65,5 +65,63 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Theme-aware overrides for zinc-* hardcoded colors */
+@layer utilities {
+  /* In light mode, swap dark zinc backgrounds to light equivalents */
+  :root:not(.dark) .bg-zinc-950 {
+    background-color: hsl(0 0% 100%) !important;
+  }
+  :root:not(.dark) .bg-zinc-900 {
+    background-color: hsl(0 0% 98%) !important;
+  }
+  :root:not(.dark) .bg-zinc-800 {
+    background-color: hsl(240 5% 96%) !important;
+  }
+  :root:not(.dark) .bg-zinc-800\/50 {
+    background-color: hsl(240 5% 96% / 0.5) !important;
+  }
+
+  /* In light mode, swap light zinc text to dark equivalents */
+  :root:not(.dark) .text-zinc-100 {
+    color: hsl(240 10% 10%) !important;
+  }
+  :root:not(.dark) .text-zinc-200 {
+    color: hsl(240 6% 20%) !important;
+  }
+  :root:not(.dark) .text-zinc-300 {
+    color: hsl(240 5% 30%) !important;
+  }
+  :root:not(.dark) .text-zinc-400 {
+    color: hsl(240 4% 46%) !important;
+  }
+  :root:not(.dark) .text-zinc-500 {
+    color: hsl(240 4% 46%) !important;
+  }
+
+  /* In light mode, swap dark zinc borders to light equivalents */
+  :root:not(.dark) .border-zinc-800 {
+    border-color: hsl(240 5.9% 90%) !important;
+  }
+  :root:not(.dark) .border-zinc-700 {
+    border-color: hsl(240 5.9% 85%) !important;
+  }
+
+  /* In light mode, fix hover states */
+  :root:not(.dark) .hover\:bg-zinc-800:hover {
+    background-color: hsl(240 5% 93%) !important;
+  }
+  :root:not(.dark) .hover\:text-zinc-100:hover {
+    color: hsl(240 10% 10%) !important;
+  }
+  :root:not(.dark) .hover\:text-zinc-300:hover {
+    color: hsl(240 5% 30%) !important;
+  }
+
+  /* In light mode, fix placeholder colors */
+  :root:not(.dark) .placeholder\:text-zinc-500::placeholder {
+    color: hsl(240 4% 60%) !important;
   }
 }

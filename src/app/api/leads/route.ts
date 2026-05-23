@@ -62,6 +62,7 @@ export async function GET(request: NextRequest) {
       score: score?.total_score ?? null,
       tier: score?.tier ?? null,
       stage: lead.deals?.[0]?.stage ?? null,
+      dealStage: lead.deals?.[0]?.stage ?? null,
       dealValue: lead.deals?.[0]?.deal_value ?? null,
       assignedRep: lead.deals?.[0]?.assigned_rep ?? null,
       contactName: lead.contacts?.[0]?.full_name ?? null,
