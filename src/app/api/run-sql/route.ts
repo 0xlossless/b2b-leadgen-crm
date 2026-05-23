@@ -74,8 +74,19 @@ export async function GET() {
   const results: any[] = [];
 
   // Use postgres.js if DATABASE_URL is available
-  const databaseUrl = process.env.DATABASE_URL;
+  let databaseUrl = process.env.DATABASE_URL;
   if (databaseUrl) {
+    // If using direct connection (db.xxx.supabase.co), try pooler instead
+    const directMatch = databaseUrl.match(/db\.([a-z]+)\.supabase\.co/);
+    if (directMatch) {
+      databaseUrl = databaseUrl.replace(
+        `db.${directMatch[1]}.supabase.co:5432`,
+        `aws-0-us-west-1.pooler.supabase.com:6543`
+      ).replace(
+        `db.${directMatch[1]}.supabase.co`,
+        `aws-0-us-west-1.pooler.supabase.com:6543`
+      );
+    }
     try {
       const pgModule = await import("postgres");
       const sql = pgModule.default(databaseUrl, {
