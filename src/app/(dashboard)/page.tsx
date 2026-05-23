@@ -17,6 +17,7 @@ import { LeadsBySourceChart } from "@/components/dashboard/leads-by-source-chart
 import { ScoreDistributionChart } from "@/components/dashboard/score-distribution-chart";
 import { PipelineFunnelChart } from "@/components/dashboard/pipeline-funnel-chart";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
+import { WebsiteAnalytics } from "@/components/dashboard/website-analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -145,7 +146,7 @@ export default async function CommandCenter() {
           <CardContent><LeadsBySourceChart data={data.leadsBySource} /></CardContent>
         </Card>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader><CardTitle className="text-zinc-100">Score Distribution</CardTitle></CardHeader>
           <CardContent><ScoreDistributionChart data={data.scoreDistribution} /></CardContent>
@@ -155,6 +156,9 @@ export default async function CommandCenter() {
           <CardContent><PipelineFunnelChart data={data.pipelineFunnel} /></CardContent>
         </Card>
       </div>
+
+      {/* Website Analytics Section */}
+      <WebsiteAnalytics />
     </div>
   );
 }
