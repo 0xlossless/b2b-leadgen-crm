@@ -28,7 +28,8 @@ export async function GET() {
       response_type: "code",
       scope: "https://www.googleapis.com/auth/adwords",
       access_type: "offline",
-      prompt: "consent select_account",
+      prompt: "consent",
+      login_hint: "jag.concrete22@gmail.com",
       state,
     });
 
