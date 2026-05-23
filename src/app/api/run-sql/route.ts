@@ -81,11 +81,13 @@ export async function GET() {
     if (directMatch) {
       const ref = directMatch[1];
       // Pooler requires username to be postgres.{ref}
+      // URL format: postgresql://postgres:[password]@db.ref.supabase.co:5432/postgres
+      // Need to change to: postgresql://postgres.ref:[password]@aws-0-us-west-1.pooler.supabase.com:6543/postgres
       databaseUrl = databaseUrl
         .replace(`db.${ref}.supabase.co:5432`, `aws-0-us-west-1.pooler.supabase.com:6543`)
         .replace(`db.${ref}.supabase.co`, `aws-0-us-west-1.pooler.supabase.com:6543`)
-        .replace('postgres:', `postgres.${ref}:`)
-        .replace('//postgres@', `//postgres.${ref}@`);
+        .replace(/\/\/postgres:/, `//postgres.${ref}:`)
+        .replace(/\/\/postgres@/, `//postgres.${ref}@`);
     }
     try {
       const pgModule = await import("postgres");
