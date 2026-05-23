@@ -39,6 +39,7 @@ import {
   ChevronRight,
   Mail,
   Megaphone,
+  CalendarDays,
   LogOut,
   Sun,
   Moon,
@@ -47,21 +48,23 @@ import {
 import { createClient } from "@/lib/supabase/client";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Overview", href: "/", icon: LayoutDashboard },
   { label: "Leads", href: "/leads", icon: Users },
   { label: "Pipeline", href: "/pipeline", icon: Kanban },
   { label: "Outreach", href: "/outreach", icon: Mail },
   { label: "Marketing", href: "/marketing", icon: Megaphone },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Scraper", href: "/scraper", icon: Search },
 ] as const;
 
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Dashboard",
+  "/": "Overview",
   "/leads": "Leads",
   "/pipeline": "Pipeline",
   "/outreach": "Outreach",
   "/marketing": "Marketing",
+  "/calendar": "Calendar",
   "/analytics": "Analytics",
   "/scraper": "Scraper",
 };

@@ -67,6 +67,7 @@ interface OutreachRecord {
   templateUsed: string;
   variant: string;
   createdAt: string;
+  sentAt?: string;
 }
 
 interface OutreachStats {
@@ -149,6 +150,7 @@ export default function OutreachPage() {
   const [sending, setSending] = useState<string | null>(null); // activityId being sent
   const [bulkSending, setBulkSending] = useState(false);
   const [sendResult, setSendResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [bulkPreview, setBulkPreview] = useState<{total: number; byIndustry: Record<string, number>; drafts: any[]} | null>(null);
 
   // Fetch leads and outreach data
   const fetchData = useCallback(async () => {
@@ -325,15 +327,12 @@ export default function OutreachPage() {
         // Refresh data after bulk generate
         await fetchData();
       } else if (dryRun) {
-        // Show summary
-        const total = data.total || 0;
-        const byInd = data.byIndustry || {};
-        const summaryLines = Object.entries(byInd)
-          .map(([ind, count]) => `  ${ind}: ${count}`)
-          .join("\n");
-        alert(
-          `Dry Run Summary\n\n${total} emails would be generated:\n${summaryLines}\n\nClick "Generate All" to create drafts.`
-        );
+        // Show summary in dialog
+        setBulkPreview({
+          total: data.total || 0,
+          byIndustry: data.byIndustry || {},
+          drafts: data.drafts || [],
+        });
       }
     } catch (error) {
       console.error("Bulk generate failed:", error);
@@ -731,7 +730,15 @@ export default function OutreachPage() {
                           {/* Outreach Status */}
                           <TableCell>
                             {record ? (
-                              <StatusBadge status={record.status} />
+                              <div className="flex flex-col gap-1">
+                                <StatusBadge status={record.status} />
+                                {record.sentAt && ["sent", "opened", "replied"].includes(record.status) && (
+                                  <span className="text-zinc-500 text-xs">
+                                    {new Date(record.sentAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}{", "}
+                                    {new Date(record.sentAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                                  </span>
+                                )}
+                              </div>
                             ) : (
                               <span className="text-xs text-zinc-600">Not started</span>
                             )}
@@ -822,6 +829,84 @@ export default function OutreachPage() {
           </p>
         </div>
       )}
+
+      {/* Bulk Preview Dialog */}
+      <Dialog open={bulkPreview !== null} onOpenChange={(open) => { if (!open) setBulkPreview(null); }}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 text-zinc-100 max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100 flex items-center gap-2">
+              <Eye className="h-5 w-5 text-amber-500" />
+              Bulk Email Preview
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              {bulkPreview?.total || 0} emails ready to generate:
+            </DialogDescription>
+          </DialogHeader>
+
+          {bulkPreview && (
+            <div className="space-y-4 mt-2">
+              {/* Industry Breakdown */}
+              <div className="rounded-lg bg-zinc-800/70 border border-zinc-700 p-4">
+                <h4 className="text-sm font-medium text-zinc-300 mb-3">By Industry</h4>
+                <div className="space-y-2">
+                  {Object.entries(bulkPreview.byIndustry).map(([ind, count]) => (
+                    <div key={ind} className="flex items-center justify-between">
+                      <span className="text-sm text-zinc-400">
+                        {INDUSTRY_LABELS[ind] || ind.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </span>
+                      <Badge className="bg-zinc-700 text-zinc-300 border-zinc-600 border">{String(count)}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Drafts Table */}
+              {bulkPreview.drafts.length > 0 && (
+                <div className="rounded-lg border border-zinc-700 overflow-hidden max-h-[300px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="border-zinc-800 hover:bg-transparent">
+                        <TableHead className="text-zinc-400">Company</TableHead>
+                        <TableHead className="text-zinc-400">Email</TableHead>
+                        <TableHead className="text-zinc-400">Subject</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {bulkPreview.drafts.map((draft: any, i: number) => (
+                        <TableRow key={i} className="border-zinc-800 hover:bg-zinc-800/30">
+                          <TableCell className="text-sm text-zinc-300">{draft.companyName || draft.company_name || "—"}</TableCell>
+                          <TableCell className="text-sm text-zinc-400 font-mono">{draft.emailTo || draft.email_to || "—"}</TableCell>
+                          <TableCell className="text-sm text-zinc-300">{draft.subject || "—"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter className="mt-4 gap-2">
+            <Button
+              variant="outline"
+              className="border-zinc-700 text-zinc-300 hover:text-zinc-100"
+              onClick={() => setBulkPreview(null)}
+            >
+              Close
+            </Button>
+            <Button
+              className="bg-amber-600 hover:bg-amber-500 text-white"
+              onClick={() => {
+                setBulkPreview(null);
+                handleBulkGenerate(false);
+              }}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Generate All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Email Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>

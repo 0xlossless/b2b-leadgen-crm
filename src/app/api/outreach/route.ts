@@ -58,6 +58,7 @@ export async function GET(request: NextRequest) {
         templateUsed: meta.template_used || "",
         variant: meta.variant || "",
         createdAt: a.created_at,
+        sentAt: meta?.sent_at || null,
       };
     });
 

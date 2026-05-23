@@ -1,10 +1,6 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { Badge } from "@/components/ui/badge";
 import { DealCard, type DealCardData } from "./deal-card";
 import type { PipelineStage } from "@/lib/db/schema";
@@ -60,14 +56,9 @@ export function KanbanColumn({ stage, label, deals, onQualify }: KanbanColumnPro
         ref={setNodeRef}
         className="flex-1 p-2 space-y-2 overflow-y-auto min-h-[200px] max-h-[calc(100vh-220px)]"
       >
-        <SortableContext
-          items={deals.map((d) => d.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {deals.map((deal) => (
-            <DealCard key={deal.id} deal={deal} onQualify={onQualify} />
-          ))}
-        </SortableContext>
+        {deals.map((deal) => (
+          <DealCard key={deal.id} deal={deal} onQualify={onQualify} />
+        ))}
 
         {deals.length === 0 && (
           <div className="flex items-center justify-center h-20 text-xs text-zinc-600 border border-dashed border-zinc-800 rounded-md">

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DndContext,
-  closestCorners,
+  closestCenter,
   DragEndEvent,
   DragOverlay,
   DragStartEvent,
@@ -204,7 +204,7 @@ export default function PipelinePage() {
         <div className="p-6">
           <DndContext
             sensors={sensors}
-            collisionDetection={closestCorners}
+            collisionDetection={closestCenter}
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >

@@ -146,4 +146,30 @@ export const QUALIFICATION_TIERS = {
 } as const;
 
 export type QualificationTier = keyof typeof QUALIFICATION_TIERS;
+// ─── Appointment Types (color-coded calendar events) ────
+export const APPOINTMENT_TYPES = {
+  phone_call: { label: "Phone Call", emoji: "📞", color: "#3b82f6", bgClass: "bg-blue-500", textClass: "text-blue-400", borderClass: "border-blue-500/30", bgLightClass: "bg-blue-500/15" },
+  in_person_quote: { label: "In-Person Quote", emoji: "📋", color: "#f59e0b", bgClass: "bg-amber-500", textClass: "text-amber-400", borderClass: "border-amber-500/30", bgLightClass: "bg-amber-500/15" },
+  construction: { label: "Construction", emoji: "🔨", color: "#10b981", bgClass: "bg-emerald-500", textClass: "text-emerald-400", borderClass: "border-emerald-500/30", bgLightClass: "bg-emerald-500/15" },
+} as const;
+
+export type AppointmentType = keyof typeof APPOINTMENT_TYPES;
+
+// ─── Appointments ────────────────────────────────────────
+export const appointments = pgTable("appointments", {
+  id: text("id").primaryKey(),
+  leadId: text("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+  dealId: text("deal_id").references(() => deals.id, { onDelete: "set null" }),
+  type: text("type").notNull(), // 'phone_call', 'in_person_quote', 'construction'
+  title: text("title").notNull(),
+  notes: text("notes"),
+  date: text("date").notNull(), // ISO date string YYYY-MM-DD
+  startTime: text("start_time"), // HH:mm format
+  endTime: text("end_time"), // HH:mm format
+  allDay: boolean("all_day").default(false),
+  completed: boolean("completed").default(false),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
 

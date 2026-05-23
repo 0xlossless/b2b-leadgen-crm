@@ -29,7 +29,7 @@ async function supaFetch(path: string, options: RequestInit = {}) {
 export async function GET() {
   try {
     const res = await supaFetch(
-      "google_ads_tokens?select=customer_id,expires_at&limit=1"
+      "google_ads_tokens?select=customer_id,expires_at,refresh_token&limit=1"
     );
     const rows = await res.json();
 
@@ -38,8 +38,13 @@ export async function GET() {
     }
 
     const token = rows[0];
+
+    // If a refresh_token exists, we're connected — the POST handler
+    // will refresh the access_token when needed, so expiry doesn't matter here.
+    const hasRefreshToken = !!token.refresh_token;
+
     return NextResponse.json({
-      connected: true,
+      connected: hasRefreshToken,
       customerId: token.customer_id || process.env.GADS_CUSTOMER_ID || null,
     });
   } catch (error) {

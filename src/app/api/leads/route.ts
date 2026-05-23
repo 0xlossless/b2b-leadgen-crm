@@ -127,6 +127,18 @@ export async function POST(request: NextRequest) {
       updated_at: nowDate,
     });
 
+    // Create contact if contact info provided
+    if (body.contactName || body.contactEmail || body.contactPhone) {
+      await supabase.from("contacts").insert({
+        id: ulid(),
+        lead_id: newLead.id,
+        full_name: body.contactName || "Unknown",
+        email: body.contactEmail || null,
+        phone: body.contactPhone || null,
+        created_at: nowDate,
+      });
+    }
+
     return NextResponse.json(newLead, { status: 201 });
   } catch (error) {
     console.error("POST /api/leads error:", error);

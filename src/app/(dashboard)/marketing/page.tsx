@@ -615,19 +615,32 @@ function AdCreatorTab() {
     }
   };
 
+  const mapPlatformToApiFormat = (p: AdPlatform): string => {
+    const map: Record<AdPlatform, string> = {
+      google_search: 'google_ads',
+      facebook_feed: 'facebook',
+      instagram_story: 'instagram',
+      nextdoor_post: 'nextdoor',
+    };
+    return map[p] || p;
+  };
+
   const generateAI = async () => {
     setGenerating(true);
     try {
       const res = await fetch("/api/marketing/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, variant: v }),
+        body: JSON.stringify({
+          platform: mapPlatformToApiFormat(platform),
+          targetAudience: v.headline,
+          keywords: [],
+          tone: 'professional',
+        }),
       });
       if (res.ok) {
         const data = await res.json();
-        if (data.variant) {
-          setVariants(prev => prev.map((vr, i) => i === activeVariant ? { ...vr, ...data.variant } : vr));
-        }
+        setVariants(prev => prev.map((vr, i) => i === activeVariant ? { ...vr, headline: data.headline, description: data.description, cta: data.cta } : vr));
       }
     } catch {}
     setGenerating(false);

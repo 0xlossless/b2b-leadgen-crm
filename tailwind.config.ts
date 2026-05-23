@@ -3,6 +3,12 @@ import tailwindAnimate from "tailwindcss-animate";
 
 const config: Config = {
   darkMode: ["class"],
+  safelist: [
+    // Calendar appointment type colors (dynamically applied from APPOINTMENT_TYPES)
+    "bg-blue-500", "bg-blue-500/15", "text-blue-400", "border-blue-500/30",
+    "bg-amber-500", "bg-amber-500/15", "text-amber-400", "border-amber-500/30",
+    "bg-emerald-500", "bg-emerald-500/15", "text-emerald-400", "border-emerald-500/30",
+  ],
   content: [
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",

@@ -16,6 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 interface Lead {
   id: string;
@@ -69,6 +77,18 @@ export default function LeadDatabasePage() {
   const [page, setPage] = useState(1);
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [showAddLead, setShowAddLead] = useState(false);
+  const [addingLead, setAddingLead] = useState(false);
+  const [newLead, setNewLead] = useState({
+    companyName: "",
+    website: "",
+    industry: "",
+    city: "",
+    state: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+  });
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -89,7 +109,12 @@ export default function LeadDatabasePage() {
       const data = await response.json();
 
       setLeads(data.leads || []);
-      setPagination(data.pagination || { page: 1, limit: 20, total: 0, totalPages: 0 });
+      setPagination(data.pagination || {
+        page: data.page ?? 1,
+        limit: data.limit ?? 20,
+        total: data.total ?? 0,
+        totalPages: data.totalPages ?? 0,
+      });
     } catch (error) {
       console.error("Failed to fetch leads:", error);
     } finally {
@@ -187,6 +212,39 @@ export default function LeadDatabasePage() {
     }
   }
 
+  async function handleAddLead() {
+    if (!newLead.companyName.trim()) return;
+    setAddingLead(true);
+    try {
+      const response = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: newLead.companyName,
+          website: newLead.website || undefined,
+          industry: newLead.industry || undefined,
+          city: newLead.city || undefined,
+          state: newLead.state || undefined,
+          source: "manual",
+          contactName: newLead.contactName || undefined,
+          contactEmail: newLead.contactEmail || undefined,
+          contactPhone: newLead.contactPhone || undefined,
+        }),
+      });
+      if (response.ok) {
+        setShowAddLead(false);
+        setNewLead({ companyName: "", website: "", industry: "", city: "", state: "", contactName: "", contactEmail: "", contactPhone: "" });
+        fetchLeads();
+      } else {
+        console.error("Failed to add lead");
+      }
+    } catch (error) {
+      console.error("Failed to add lead:", error);
+    } finally {
+      setAddingLead(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 p-6 lg:p-8">
       {/* Header */}
@@ -206,7 +264,7 @@ export default function LeadDatabasePage() {
             <Download className="h-4 w-4 mr-2" />
             Export CSV
           </Button>
-          <Button className="bg-indigo-600 hover:bg-indigo-500 text-white">
+          <Button className="bg-indigo-600 hover:bg-indigo-500 text-white" onClick={() => setShowAddLead(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Add Lead
           </Button>
@@ -315,6 +373,103 @@ export default function LeadDatabasePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Lead Dialog */}
+      <Dialog open={showAddLead} onOpenChange={setShowAddLead}>
+        <DialogContent className="bg-zinc-900 border-zinc-700 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-100">Add New Lead</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label className="text-zinc-300">Company Name *</Label>
+              <Input
+                className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                placeholder="Acme Corp"
+                value={newLead.companyName}
+                onChange={(e) => setNewLead({ ...newLead, companyName: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">Website</Label>
+                <Input
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="https://example.com"
+                  value={newLead.website}
+                  onChange={(e) => setNewLead({ ...newLead, website: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">Industry</Label>
+                <Input
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="Restaurant"
+                  value={newLead.industry}
+                  onChange={(e) => setNewLead({ ...newLead, industry: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">City</Label>
+                <Input
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="Livermore"
+                  value={newLead.city}
+                  onChange={(e) => setNewLead({ ...newLead, city: e.target.value })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label className="text-zinc-300">State</Label>
+                <Input
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="CA"
+                  value={newLead.state}
+                  onChange={(e) => setNewLead({ ...newLead, state: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="border-t border-zinc-800 pt-4">
+              <p className="text-sm font-medium text-zinc-400 mb-3">Contact (optional)</p>
+              <div className="grid gap-3">
+                <Input
+                  className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                  placeholder="Contact name"
+                  value={newLead.contactName}
+                  onChange={(e) => setNewLead({ ...newLead, contactName: e.target.value })}
+                />
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                    placeholder="Email"
+                    value={newLead.contactEmail}
+                    onChange={(e) => setNewLead({ ...newLead, contactEmail: e.target.value })}
+                  />
+                  <Input
+                    className="bg-zinc-800 border-zinc-700 text-zinc-100"
+                    placeholder="Phone"
+                    value={newLead.contactPhone}
+                    onChange={(e) => setNewLead({ ...newLead, contactPhone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="outline" className="border-zinc-700 text-zinc-300" onClick={() => setShowAddLead(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-indigo-600 hover:bg-indigo-500 text-white"
+                onClick={handleAddLead}
+                disabled={addingLead || !newLead.companyName.trim()}
+              >
+                {addingLead ? "Adding..." : "Add Lead"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
