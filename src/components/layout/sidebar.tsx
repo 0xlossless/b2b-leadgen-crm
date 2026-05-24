@@ -40,6 +40,7 @@ import {
   Mail,
   Megaphone,
   CalendarDays,
+  Phone,
   LogOut,
   Sun,
   Moon,
@@ -54,6 +55,7 @@ const NAV_ITEMS = [
   { label: "Outreach", href: "/outreach", icon: Mail },
   { label: "Marketing", href: "/marketing", icon: Megaphone },
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
+  { label: "Voice Calls", href: "/voice-calls", icon: Phone },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Scraper", href: "/scraper", icon: Search },
 ] as const;
@@ -65,6 +67,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/outreach": "Outreach",
   "/marketing": "Marketing",
   "/calendar": "Calendar",
+  "/voice-calls": "Voice Calls",
   "/analytics": "Analytics",
   "/scraper": "Scraper",
 };
