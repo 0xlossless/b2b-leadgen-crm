@@ -160,14 +160,26 @@ This plan explicitly does **not** yet cover:
 
 ---
 
+## Phase 2 Progress Update
+
+The following live-telephony scaffolding has now been added after the initial foundation work:
+
+1. Twilio inbound voice webhook route: `src/app/api/voice-agent/twilio/incoming/route.ts`
+2. Twilio dial action fallback route: `src/app/api/voice-agent/twilio/dial-action/route.ts`
+3. Retell inbound webhook override route: `src/app/api/voice-agent/retell/inbound/route.ts`
+4. Retell signed event receiver route: `src/app/api/voice-agent/retell/events/route.ts`
+5. Shared decision engine: `src/lib/voice-agent/decision.ts`
+6. Shared Retell/TwiML helpers: `src/lib/voice-agent/retell.ts`, `src/lib/voice-agent/twilio.ts`
+
 ## Future Tasks (Not in this commit)
 
-1. Twilio inbound voice webhook route
-2. Retell webhook/event callback route
-3. Live-transfer handler
-4. Booking-to-appointments integration
-5. Call transcript storage table and reporting
-6. UI surfaces for voice-agent leads and call summaries
+1. Configure real Twilio number webhook to point at `/api/voice-agent/twilio/incoming`
+2. Configure Retell inbound webhook URL and account/agent event webhook URL
+3. Persist Twilio ↔ Retell ↔ CRM ID mapping more explicitly for perfect event reconciliation
+4. Add live-transfer handler to bridge hot leads to Joseph directly
+5. Add booking-to-appointments integration
+6. Add call transcript storage table and reporting
+7. Add UI surfaces for voice-agent leads and call summaries
 
 ---
 

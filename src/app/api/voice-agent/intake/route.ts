@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { ulid } from "ulid";
 import { getVoiceAgentBlueprint } from "@/lib/voice-agent/config";
+import { assessVoiceLead } from "@/lib/voice-agent/decision";
 
 export const dynamic = "force-dynamic";
 
@@ -24,25 +25,6 @@ function normalizePhone(phone: string) {
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return phone;
-}
-
-function inferPriority(payload: Record<string, unknown>) {
-  const projectType = String(payload.projectType || payload.project_type || "").toLowerCase();
-  const propertyType = String(payload.propertyType || payload.property_type || "").toLowerCase();
-  const timeline = String(payload.timeline || "").toLowerCase();
-  const squareFootage = Number(payload.squareFootage || payload.square_footage || 0);
-  const wantsTransfer = Boolean(payload.requestImmediateTransfer || payload.request_immediate_transfer);
-
-  const isCommercial =
-    propertyType.includes("commercial") ||
-    projectType.includes("commercial") ||
-    projectType.includes("warehouse") ||
-    projectType.includes("showroom");
-
-  if (wantsTransfer) return "hot";
-  if (isCommercial && squareFootage >= 1000) return "hot";
-  if (timeline.includes("asap") || timeline.includes("this week") || timeline.includes("soon")) return "hot";
-  return "standard";
 }
 
 function summarizeCall(payload: Record<string, unknown>, priority: string) {
@@ -72,11 +54,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const serviceAreaMatch = blueprint.businessRules.serviceAreas.some(
-      (area) => area.toLowerCase() === serviceCity.toLowerCase()
-    );
-
-    const priority = inferPriority(body);
+    const assessment = assessVoiceLead(body);
+    const serviceAreaMatch = assessment.serviceAreaMatch;
+    const priority = assessment.priority;
     const now = new Date().toISOString();
     const leadId = ulid();
     const supabase = getSupabase();
@@ -158,6 +138,9 @@ export async function POST(request: NextRequest) {
       intakeSource: "voice_agent",
       serviceAreaMatch,
       priority,
+      recommendedAction: assessment.action,
+      matchedTriggers: assessment.matchedTriggers,
+      assessmentReasons: assessment.reasons,
       projectType,
       serviceCity,
       projectAddress,
@@ -189,8 +172,7 @@ export async function POST(request: NextRequest) {
         dealId,
         priority,
         serviceAreaMatch,
-        nextAction:
-          priority === "hot" ? "transfer_or_immediate_callback" : "standard_callback",
+        nextAction: assessment.action,
       },
       { status: 201 }
     );
