@@ -115,10 +115,10 @@ Expected:
 
 These are still pending after hookup:
 
-1. Live transfer bridge to Joseph for hot leads
-2. Direct appointment booking from live calls
-3. Call transcript/recording dashboard UI
-4. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
+1. Direct appointment booking from live calls
+2. Call transcript/recording dashboard UI
+3. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
+4. Optional: make transfer eligibility sensitive to business hours and richer caller context from real provider payloads
 
 ## Voice Call Persistence Layer
 

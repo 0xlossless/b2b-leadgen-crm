@@ -3,6 +3,7 @@ import { getVoiceAgentBlueprint } from "@/lib/voice-agent/config";
 import { buildDialSipTwiml, buildSayTwiml } from "@/lib/voice-agent/twilio";
 import { registerRetellPhoneCall } from "@/lib/voice-agent/retell";
 import { upsertVoiceCall } from "@/lib/voice-agent/calls";
+import { decideLiveTransfer } from "@/lib/voice-agent/transfer";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,12 @@ function normalizePhone(phone: string) {
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return phone;
+}
+
+function bodyPriorityFromRequest(form: FormData) {
+  const raw = String(form.get("Priority") || "").trim().toLowerCase();
+  if (raw === "hot" || raw === "standard" || raw === "disqualified") return raw;
+  return null;
 }
 
 export async function POST(request: NextRequest) {
@@ -65,6 +72,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    const liveTransferDecision = decideLiveTransfer({
+      priority: bodyPriorityFromRequest(form),
+      serviceAreaMatch: null,
+      requestedImmediateTransfer: false,
+    });
+
     await upsertVoiceCall({
       provider: "twilio",
       source: "twilio_voice_webhook",
@@ -75,6 +88,9 @@ export async function POST(request: NextRequest) {
       toNumber,
       direction: "inbound",
       status: String(registration.call_status || "registered"),
+      transferTargetNumber: liveTransferDecision.targetNumber,
+      transferStatus: liveTransferDecision.shouldTransfer ? "eligible" : "not_requested",
+      transferReason: liveTransferDecision.reason,
       lastEvent: "twilio_incoming_registered",
       metadata: {
         registration,

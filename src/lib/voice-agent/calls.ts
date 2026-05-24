@@ -19,6 +19,10 @@ export interface VoiceCallRecord {
   twilio_call_sid: string | null;
   retell_call_id: string | null;
   retell_agent_id: string | null;
+  transfer_target_number?: string | null;
+  transfer_status?: string | null;
+  transfer_reason?: string | null;
+  transfer_updated_at?: string | null;
   from_number: string | null;
   to_number: string | null;
   direction: string | null;
@@ -42,6 +46,9 @@ export interface UpsertVoiceCallInput {
   twilioCallSid?: string | null;
   retellCallId?: string | null;
   retellAgentId?: string | null;
+  transferTargetNumber?: string | null;
+  transferStatus?: string | null;
+  transferReason?: string | null;
   fromNumber?: string | null;
   toNumber?: string | null;
   direction?: string | null;
@@ -71,6 +78,13 @@ function buildVoiceCallPayload(input: UpsertVoiceCallInput, existing?: Partial<V
     twilio_call_sid: input.twilioCallSid ?? existing?.twilio_call_sid ?? null,
     retell_call_id: input.retellCallId ?? existing?.retell_call_id ?? null,
     retell_agent_id: input.retellAgentId ?? existing?.retell_agent_id ?? null,
+    transfer_target_number: input.transferTargetNumber ?? existing?.transfer_target_number ?? null,
+    transfer_status: input.transferStatus ?? existing?.transfer_status ?? null,
+    transfer_reason: input.transferReason ?? existing?.transfer_reason ?? null,
+    transfer_updated_at:
+      input.transferStatus || input.transferReason || input.transferTargetNumber
+        ? now
+        : existing?.transfer_updated_at ?? null,
     from_number: input.fromNumber ?? existing?.from_number ?? null,
     to_number: input.toNumber ?? existing?.to_number ?? null,
     direction: input.direction ?? existing?.direction ?? null,

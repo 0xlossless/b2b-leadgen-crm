@@ -172,6 +172,8 @@ The following live-telephony scaffolding has now been added after the initial fo
 6. Shared Retell/TwiML helpers: `src/lib/voice-agent/retell.ts`, `src/lib/voice-agent/twilio.ts`
 7. Voice call reconciliation layer: `src/lib/voice-agent/calls.ts`
 8. Voice call SQL helper route: `src/app/api/voice-agent/migrate/route.ts`
+9. Live transfer decision + helper layer: `src/lib/voice-agent/transfer.ts`
+10. Twilio live transfer routes: `src/app/api/voice-agent/twilio/transfer/route.ts`, `src/app/api/voice-agent/twilio/transfer-action/route.ts`
 
 ## Future Tasks (Not in this commit)
 
