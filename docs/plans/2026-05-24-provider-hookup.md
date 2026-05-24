@@ -115,10 +115,11 @@ Expected:
 
 These are still pending after hookup:
 
-1. Direct appointment booking from live calls
+1. Booking confirmation SMS / reminder flow for voice-created appointments
 2. Call transcript/recording dashboard UI
 3. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
 4. Optional: make transfer eligibility sensitive to business hours and richer caller context from real provider payloads
+5. UI for orchestration outcomes (booked vs transferred vs callback)
 
 ## Voice Call Persistence Layer
 

@@ -14,11 +14,14 @@ export interface VoiceCallRecord {
   id: string;
   lead_id: string | null;
   deal_id: string | null;
+  appointment_id?: string | null;
   provider: VoiceCallProvider;
   source: string;
   twilio_call_sid: string | null;
   retell_call_id: string | null;
   retell_agent_id: string | null;
+  orchestration_action?: string | null;
+  booking_status?: string | null;
   transfer_target_number?: string | null;
   transfer_status?: string | null;
   transfer_reason?: string | null;
@@ -41,11 +44,14 @@ export interface VoiceCallRecord {
 export interface UpsertVoiceCallInput {
   leadId?: string | null;
   dealId?: string | null;
+  appointmentId?: string | null;
   provider: VoiceCallProvider;
   source: string;
   twilioCallSid?: string | null;
   retellCallId?: string | null;
   retellAgentId?: string | null;
+  orchestrationAction?: string | null;
+  bookingStatus?: string | null;
   transferTargetNumber?: string | null;
   transferStatus?: string | null;
   transferReason?: string | null;
@@ -73,11 +79,14 @@ function buildVoiceCallPayload(input: UpsertVoiceCallInput, existing?: Partial<V
     id: existing?.id || ulid(),
     lead_id: input.leadId ?? existing?.lead_id ?? null,
     deal_id: input.dealId ?? existing?.deal_id ?? null,
+    appointment_id: input.appointmentId ?? existing?.appointment_id ?? null,
     provider: input.provider ?? existing?.provider ?? "internal",
     source: input.source ?? existing?.source ?? "voice_agent",
     twilio_call_sid: input.twilioCallSid ?? existing?.twilio_call_sid ?? null,
     retell_call_id: input.retellCallId ?? existing?.retell_call_id ?? null,
     retell_agent_id: input.retellAgentId ?? existing?.retell_agent_id ?? null,
+    orchestration_action: input.orchestrationAction ?? existing?.orchestration_action ?? null,
+    booking_status: input.bookingStatus ?? existing?.booking_status ?? null,
     transfer_target_number: input.transferTargetNumber ?? existing?.transfer_target_number ?? null,
     transfer_status: input.transferStatus ?? existing?.transfer_status ?? null,
     transfer_reason: input.transferReason ?? existing?.transfer_reason ?? null,
