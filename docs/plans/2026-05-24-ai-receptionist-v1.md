@@ -180,6 +180,7 @@ The following live-telephony scaffolding has now been added after the initial fo
 5. Add booking-to-appointments integration
 6. Add call transcript storage table and reporting
 7. Add UI surfaces for voice-agent leads and call summaries
+8. Use the provider hookup runbook at `docs/plans/2026-05-24-provider-hookup.md` to finish go-live setup
 
 ---
 
