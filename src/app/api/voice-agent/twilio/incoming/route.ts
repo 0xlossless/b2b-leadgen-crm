@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getVoiceAgentBlueprint } from "@/lib/voice-agent/config";
 import { buildDialSipTwiml, buildSayTwiml } from "@/lib/voice-agent/twilio";
 import { registerRetellPhoneCall } from "@/lib/voice-agent/retell";
+import { upsertVoiceCall } from "@/lib/voice-agent/calls";
 
 export const dynamic = "force-dynamic";
 
@@ -61,6 +62,23 @@ export async function POST(request: NextRequest) {
         business_name: blueprint.businessRules.brandName,
         owner_name: blueprint.businessRules.ownerName,
         caller_number: fromNumber,
+      },
+    });
+
+    await upsertVoiceCall({
+      provider: "twilio",
+      source: "twilio_voice_webhook",
+      twilioCallSid: callSid,
+      retellCallId: registration.call_id,
+      retellAgentId: registration.agent_id || agentId,
+      fromNumber,
+      toNumber,
+      direction: "inbound",
+      status: String(registration.call_status || "registered"),
+      lastEvent: "twilio_incoming_registered",
+      metadata: {
+        registration,
+        telephonyProvider: "twilio",
       },
     });
 

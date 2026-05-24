@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getProviderConfigStatus, getProviderSetupChecklist } from "@/lib/voice-agent/provider-status";
 
 export const dynamic = "force-dynamic";
 
-const VOICE_CALLS_SQL = `
+export async function GET() {
+  const sql = `
 CREATE TABLE IF NOT EXISTS voice_calls (
   id TEXT PRIMARY KEY,
   lead_id TEXT REFERENCES leads(id) ON DELETE SET NULL,
@@ -32,15 +32,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_voice_calls_retell_call_id ON voice_calls(
 CREATE INDEX IF NOT EXISTS idx_voice_calls_lead_id ON voice_calls(lead_id);
 CREATE INDEX IF NOT EXISTS idx_voice_calls_created_at ON voice_calls(created_at);
 CREATE INDEX IF NOT EXISTS idx_voice_calls_provider ON voice_calls(provider);
-`.trim();
+`;
 
-export async function GET() {
   return NextResponse.json({
-    status: getProviderConfigStatus(),
-    checklist: getProviderSetupChecklist(),
-    migrations: {
-      voiceCallsSql: VOICE_CALLS_SQL,
-      voiceCallsMigrationApi: "/api/voice-agent/migrate",
-    },
+    message: "Run this SQL in the Supabase SQL Editor to create the voice_calls table.",
+    sql,
   });
 }

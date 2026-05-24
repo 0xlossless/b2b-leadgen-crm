@@ -1,20 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
-import { ulid } from "ulid";
 import { getRetellWebhookSummary, verifyRetellSignature } from "@/lib/voice-agent/retell";
+import { logVoiceCallActivity, upsertVoiceCall } from "@/lib/voice-agent/calls";
 
 export const dynamic = "force-dynamic";
 
-function getSupabase() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+function extractMetadata(call: Record<string, unknown>) {
+  return (call.metadata as Record<string, unknown> | undefined) || {};
 }
 
 function extractLeadId(call: Record<string, unknown>) {
-  const metadata = call.metadata as Record<string, unknown> | undefined;
+  const metadata = extractMetadata(call);
   if (metadata?.lead_id) return String(metadata.lead_id);
+  return "";
+}
+
+function extractDealId(call: Record<string, unknown>) {
+  const metadata = extractMetadata(call);
+  if (metadata?.deal_id) return String(metadata.deal_id);
   return "";
 }
 
@@ -30,27 +32,50 @@ export async function POST(request: NextRequest) {
 
     const payload = JSON.parse(rawBody);
     const summary = getRetellWebhookSummary(payload);
-    const supabase = getSupabase();
-    const leadId = extractLeadId(payload.call || {});
+    const call = (payload.call || {}) as Record<string, unknown>;
+    const metadata = extractMetadata(call);
+    const leadId = extractLeadId(call);
+    const dealId = extractDealId(call);
 
-    if (leadId) {
+    const voiceCall = await upsertVoiceCall({
+      leadId: leadId || null,
+      dealId: dealId || null,
+      provider: "retell",
+      source: "retell_webhook",
+      twilioCallSid: metadata.twilio_call_sid ? String(metadata.twilio_call_sid) : null,
+      retellCallId: summary.callId || null,
+      retellAgentId: summary.agentId || null,
+      fromNumber: summary.fromNumber || null,
+      toNumber: summary.toNumber || null,
+      direction: String(call.direction || "inbound") || null,
+      status: summary.status || null,
+      transcript: summary.transcript || null,
+      recordingUrl: summary.recordingUrl || null,
+      summary: summary.endUserMessage || null,
+      lastEvent: summary.event || null,
+      metadata: {
+        retellMetadata: metadata,
+        summary,
+        payload,
+      },
+    });
+
+    if (voiceCall.lead_id) {
       const description = `Retell event ${summary.event}: ${summary.status || "unknown status"}`;
-      await supabase.from("activities").insert({
-        id: ulid(),
-        lead_id: leadId,
-        deal_id: null,
-        type: "call",
+      await logVoiceCallActivity({
+        leadId: voiceCall.lead_id,
+        dealId: voiceCall.deal_id,
         description,
-        metadata: JSON.stringify({
+        metadata: {
           source: "retell_webhook",
+          voiceCallId: voiceCall.id,
           summary,
           payload,
-        }),
-        created_at: new Date().toISOString(),
+        },
       });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, voiceCallId: voiceCall.id });
   } catch (error) {
     console.error("POST /api/voice-agent/retell/events error:", error);
     return NextResponse.json({ error: "Failed to process Retell event" }, { status: 500 });

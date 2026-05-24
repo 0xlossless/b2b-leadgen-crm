@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { ulid } from "ulid";
 import { getVoiceAgentBlueprint } from "@/lib/voice-agent/config";
 import { assessVoiceLead } from "@/lib/voice-agent/decision";
+import { upsertVoiceCall } from "@/lib/voice-agent/calls";
 
 export const dynamic = "force-dynamic";
 
@@ -165,6 +166,27 @@ export async function POST(request: NextRequest) {
     });
     if (activityError) throw activityError;
 
+    const voiceCall = await upsertVoiceCall({
+      leadId,
+      dealId,
+      provider: "internal",
+      source: "voice_agent_intake",
+      twilioCallSid: String(body.twilioCallSid || body.twilio_call_sid || "") || null,
+      retellCallId: String(body.retellCallId || body.retell_call_id || "") || null,
+      retellAgentId: String(body.retellAgentId || body.retell_agent_id || "") || null,
+      fromNumber: normalizedPhone,
+      toNumber: String(body.calledNumber || body.called_number || process.env.TWILIO_FROM_NUMBER || "") || null,
+      direction: String(body.direction || "inbound") || null,
+      status: String(body.callStatus || body.call_status || body.callDisposition || "captured") || null,
+      priority,
+      serviceAreaMatch,
+      transcript: String(body.transcript || "") || null,
+      recordingUrl: String(body.recordingUrl || body.recording_url || "") || null,
+      summary: callSummary,
+      lastEvent: "voice_intake_saved",
+      metadata,
+    });
+
     return NextResponse.json(
       {
         success: true,
@@ -173,6 +195,7 @@ export async function POST(request: NextRequest) {
         priority,
         serviceAreaMatch,
         nextAction: assessment.action,
+        voiceCallId: voiceCall.id,
       },
       { status: 201 }
     );

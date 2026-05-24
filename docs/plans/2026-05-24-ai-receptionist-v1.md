@@ -170,6 +170,8 @@ The following live-telephony scaffolding has now been added after the initial fo
 4. Retell signed event receiver route: `src/app/api/voice-agent/retell/events/route.ts`
 5. Shared decision engine: `src/lib/voice-agent/decision.ts`
 6. Shared Retell/TwiML helpers: `src/lib/voice-agent/retell.ts`, `src/lib/voice-agent/twilio.ts`
+7. Voice call reconciliation layer: `src/lib/voice-agent/calls.ts`
+8. Voice call SQL helper route: `src/app/api/voice-agent/migrate/route.ts`
 
 ## Future Tasks (Not in this commit)
 

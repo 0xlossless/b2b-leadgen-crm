@@ -115,11 +115,20 @@ Expected:
 
 These are still pending after hookup:
 
-1. Twilio ↔ Retell ↔ CRM ID mapping persistence for perfect event correlation
-2. Live transfer bridge to Joseph for hot leads
-3. Direct appointment booking from live calls
-4. Call transcript/recording dashboard UI
-5. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
+1. Live transfer bridge to Joseph for hot leads
+2. Direct appointment booking from live calls
+3. Call transcript/recording dashboard UI
+4. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
+
+## Voice Call Persistence Layer
+
+A `voice_calls` table is now expected by the app to reconcile Twilio, Retell, and CRM records.
+
+Ways to get the SQL:
+- `GET /api/voice-agent/migrate`
+- `GET /api/voice-agent/status` → `migrations.voiceCallsSql`
+
+Run that SQL in the Supabase SQL Editor before expecting full call reconciliation to persist.
 
 ---
 
