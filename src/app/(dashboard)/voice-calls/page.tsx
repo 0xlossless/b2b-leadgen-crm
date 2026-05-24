@@ -37,6 +37,10 @@ type VoiceCall = {
   retellAgentId: string | null;
   orchestrationAction: string | null;
   bookingStatus: string | null;
+  confirmationSmsStatus: string | null;
+  confirmationSmsSentAt: string | null;
+  reminderSmsStatus: string | null;
+  reminderSmsSentAt: string | null;
   transferTargetNumber: string | null;
   transferStatus: string | null;
   transferReason: string | null;
@@ -65,10 +69,10 @@ function fmtDate(value?: string | null) {
 
 function statusBadge(status?: string | null) {
   const normalized = (status || "unknown").toLowerCase();
-  if (["completed", "connected", "scheduled"].includes(normalized)) {
+  if (["completed", "connected", "scheduled", "sent"].includes(normalized)) {
     return <Badge className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">{status}</Badge>;
   }
-  if (["requested", "eligible", "ongoing", "registered"].includes(normalized)) {
+  if (["requested", "eligible", "ongoing", "registered", "pending"].includes(normalized)) {
     return <Badge className="bg-blue-500/15 text-blue-400 border border-blue-500/30">{status}</Badge>;
   }
   if (["failed", "skipped", "disqualified"].includes(normalized)) {
@@ -287,6 +291,14 @@ export default function VoiceCallsPage() {
                     <p className="text-zinc-500">Transfer</p>
                     <div className="mt-1">{statusBadge(selectedCall.transferStatus)}</div>
                   </div>
+                  <div>
+                    <p className="text-zinc-500">Confirmation SMS</p>
+                    <div className="mt-1">{statusBadge(selectedCall.confirmationSmsStatus)}</div>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500">Reminder SMS</p>
+                    <div className="mt-1">{statusBadge(selectedCall.reminderSmsStatus)}</div>
+                  </div>
                 </div>
 
                 <div className="space-y-2 text-sm">
@@ -305,6 +317,14 @@ export default function VoiceCallsPage() {
                   <div>
                     <p className="text-zinc-500">Last Event</p>
                     <p className="text-zinc-100">{selectedCall.lastEvent || "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500">Confirmation Sent At</p>
+                    <p className="text-zinc-100">{fmtDate(selectedCall.confirmationSmsSentAt)}</p>
+                  </div>
+                  <div>
+                    <p className="text-zinc-500">Reminder Sent At</p>
+                    <p className="text-zinc-100">{fmtDate(selectedCall.reminderSmsSentAt)}</p>
                   </div>
                 </div>
 

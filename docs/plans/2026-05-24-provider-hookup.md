@@ -30,10 +30,14 @@ Add these to Vercel production:
 - `RETELL_API_KEY`
 - `RETELL_AGENT_ID` (or `RETELL_DEFAULT_AGENT_ID`)
 - `APP_BASE_URL=https://b2b-leadgen-kappa.vercel.app`
+- `CRON_SECRET` (recommended — Vercel cron will send this as `Authorization: Bearer <CRON_SECRET>`)
+
 
 Optional but useful:
 - `TWILIO_MESSAGING_SERVICE_SID`
 - `NOTIFY_PHONE`
+- `VOICE_REMINDER_WINDOW_HOURS=24`
+- `VOICE_REMINDER_CRON_SCHEDULE=0 16 * * *`
 
 ---
 
@@ -109,17 +113,42 @@ Expected:
 - at least one Retell event arrives at `/api/voice-agent/retell/events`
 - if lead is linked in metadata later, CRM activity logging will persist those events cleanly
 
+### Test D — Reminder endpoint (manual)
+1. Ensure `CRON_SECRET` is set in Vercel
+2. Create a voice-booked estimate within the next 24 hours
+3. Send a GET or POST request to `/api/voice-agent/reminders`
+4. Include `Authorization: Bearer <CRON_SECRET>`
+5. Optionally override the scan window with `windowHours`
+
+Expected:
+- endpoint returns processed reminder counts
+- matching `voice_calls` rows update `reminder_sms_status`
+- reminder attempt is logged as CRM activity
+- callers with missing numbers are marked `skipped`, not silently ignored
+
+### Test E — Vercel cron automation
+1. Deploy `vercel.json` with the reminder cron entry
+2. Confirm the cron job appears in the Vercel dashboard
+3. Verify the cron path is `/api/voice-agent/reminders`
+4. Confirm schedule is interpreted in UTC
+5. Inspect cron logs after the first run
+
+Expected:
+- Vercel invokes the reminder endpoint automatically
+- `CRON_SECRET` is passed as bearer auth
+- reminder endpoint runs without manual intervention
+- logs show success or explicit failures for follow-up
+
 ---
 
 ## Known Gaps
 
 These are still pending after hookup:
 
-1. Booking confirmation SMS / reminder flow for voice-created appointments
-2. Call transcript/recording dashboard UI
-3. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
-4. Optional: make transfer eligibility sensitive to business hours and richer caller context from real provider payloads
-5. UI for orchestration outcomes (booked vs transferred vs callback)
+1. Call transcript/recording dashboard UI
+2. More robust event-to-lead reconciliation when Retell events arrive before a CRM lead exists
+3. Optional: make transfer eligibility sensitive to business hours and richer caller context from real provider payloads
+4. UI for orchestration outcomes (booked vs transferred vs callback)
 
 ## Voice Call Persistence Layer
 
@@ -133,6 +162,28 @@ Run that SQL in the Supabase SQL Editor before expecting full call reconciliatio
 
 ---
 
+## Scheduled Reminder Automation
+
+The repo now includes a Vercel cron definition in `vercel.json`:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/voice-agent/reminders",
+      "schedule": "0 16 * * *"
+    }
+  ]
+}
+```
+
+Notes:
+- Vercel cron schedules run in UTC
+- `0 16 * * *` = 16:00 UTC daily
+- secure the route with `CRON_SECRET`
+- the reminder endpoint accepts both `GET` and `POST`
+- override the default scan window with `VOICE_REMINDER_WINDOW_HOURS`
+
 ## Recommended Immediate Next Step After Hookup
 
 After the providers are connected and a real call is tested:
@@ -140,7 +191,8 @@ After the providers are connected and a real call is tested:
 1. capture one successful real inbound call
 2. inspect Twilio request + Retell event payloads
 3. patch reconciliation logic if needed
-4. implement hot-lead live transfer
+4. validate reminder cron behavior in production logs
+5. implement any follow-up UX polish needed for call outcomes
 
 ---
 

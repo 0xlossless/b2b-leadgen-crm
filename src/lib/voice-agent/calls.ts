@@ -22,6 +22,10 @@ export interface VoiceCallRecord {
   retell_agent_id: string | null;
   orchestration_action?: string | null;
   booking_status?: string | null;
+  confirmation_sms_status?: string | null;
+  confirmation_sms_sent_at?: string | null;
+  reminder_sms_status?: string | null;
+  reminder_sms_sent_at?: string | null;
   transfer_target_number?: string | null;
   transfer_status?: string | null;
   transfer_reason?: string | null;
@@ -52,6 +56,10 @@ export interface UpsertVoiceCallInput {
   retellAgentId?: string | null;
   orchestrationAction?: string | null;
   bookingStatus?: string | null;
+  confirmationSmsStatus?: string | null;
+  confirmationSmsSentAt?: string | null;
+  reminderSmsStatus?: string | null;
+  reminderSmsSentAt?: string | null;
   transferTargetNumber?: string | null;
   transferStatus?: string | null;
   transferReason?: string | null;
@@ -87,6 +95,10 @@ function buildVoiceCallPayload(input: UpsertVoiceCallInput, existing?: Partial<V
     retell_agent_id: input.retellAgentId ?? existing?.retell_agent_id ?? null,
     orchestration_action: input.orchestrationAction ?? existing?.orchestration_action ?? null,
     booking_status: input.bookingStatus ?? existing?.booking_status ?? null,
+    confirmation_sms_status: input.confirmationSmsStatus ?? existing?.confirmation_sms_status ?? null,
+    confirmation_sms_sent_at: input.confirmationSmsSentAt ?? existing?.confirmation_sms_sent_at ?? null,
+    reminder_sms_status: input.reminderSmsStatus ?? existing?.reminder_sms_status ?? null,
+    reminder_sms_sent_at: input.reminderSmsSentAt ?? existing?.reminder_sms_sent_at ?? null,
     transfer_target_number: input.transferTargetNumber ?? existing?.transfer_target_number ?? null,
     transfer_status: input.transferStatus ?? existing?.transfer_status ?? null,
     transfer_reason: input.transferReason ?? existing?.transfer_reason ?? null,

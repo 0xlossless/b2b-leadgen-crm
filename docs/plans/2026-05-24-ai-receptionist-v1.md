@@ -182,7 +182,7 @@ The following live-telephony scaffolding has now been added after the initial fo
 1. Configure real Twilio number webhook to point at `/api/voice-agent/twilio/incoming`
 2. Configure Retell inbound webhook URL and account/agent event webhook URL
 3. Persist Twilio ↔ Retell ↔ CRM ID mapping more explicitly for perfect event reconciliation
-4. Add booking confirmation SMS / reminders for voice-created appointments
+4. Validate the scheduled reminder automation in production after deploy
 5. Add call transcript storage table and reporting UI
 6. Add UI surfaces for voice-agent leads, call summaries, and orchestration outcomes
 7. Use the provider hookup runbook at `docs/plans/2026-05-24-provider-hookup.md` to finish go-live setup

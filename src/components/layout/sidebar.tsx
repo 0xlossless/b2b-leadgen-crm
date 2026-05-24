@@ -45,6 +45,7 @@ import {
   Sun,
   Moon,
   Monitor,
+  ShieldCheck,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -56,6 +57,7 @@ const NAV_ITEMS = [
   { label: "Marketing", href: "/marketing", icon: Megaphone },
   { label: "Calendar", href: "/calendar", icon: CalendarDays },
   { label: "Voice Calls", href: "/voice-calls", icon: Phone },
+  { label: "Voice Rollout", href: "/voice-agent-rollout", icon: ShieldCheck },
   { label: "Analytics", href: "/analytics", icon: BarChart3 },
   { label: "Scraper", href: "/scraper", icon: Search },
 ] as const;
@@ -68,6 +70,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/marketing": "Marketing",
   "/calendar": "Calendar",
   "/voice-calls": "Voice Calls",
+  "/voice-agent-rollout": "Voice Rollout",
   "/analytics": "Analytics",
   "/scraper": "Scraper",
 };

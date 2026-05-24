@@ -24,11 +24,7 @@ export interface OrchestrationDecision {
 }
 
 function hasBookingSignals(input: OrchestrationInput) {
-  return Boolean(
-    input.wantsBooking ||
-      (input.preferredDate && input.preferredDate.trim()) ||
-      (input.preferredStartTime && input.preferredStartTime.trim())
-  );
+  return Boolean(input.preferredDate && input.preferredDate.trim());
 }
 
 export function decideVoiceOrchestration(input: OrchestrationInput): OrchestrationDecision {
@@ -49,6 +45,11 @@ export function decideVoiceOrchestration(input: OrchestrationInput): Orchestrati
   }
 
   const bookingEligible = hasBookingSignals(input);
+  const bookingIntent = Boolean(
+    input.wantsBooking ||
+      bookingEligible ||
+      (input.preferredStartTime && input.preferredStartTime.trim())
+  );
 
   if (transfer.shouldTransfer) {
     return {
@@ -63,8 +64,18 @@ export function decideVoiceOrchestration(input: OrchestrationInput): Orchestrati
   if (bookingEligible) {
     return {
       action: "book_estimate",
-      reason: "Caller supplied booking intent or preferred appointment details.",
+      reason: "Caller supplied a concrete appointment date for an estimate.",
       bookingEligible: true,
+      transferEligible: false,
+      fallbackAction: "capture_and_callback",
+    };
+  }
+
+  if (bookingIntent) {
+    return {
+      action: "capture_and_callback",
+      reason: "Caller wants an estimate, but the appointment date still needs confirmation.",
+      bookingEligible: false,
       transferEligible: false,
       fallbackAction: "capture_and_callback",
     };

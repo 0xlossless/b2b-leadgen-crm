@@ -4,6 +4,7 @@ import { decideVoiceOrchestration } from "@/lib/voice-agent/orchestration";
 import { buildSayAndDialNumberTwiml, buildSayTwiml } from "@/lib/voice-agent/twilio";
 import { decideLiveTransfer } from "@/lib/voice-agent/transfer";
 import { findVoiceCallByProviderIds, logVoiceCallActivity, upsertVoiceCall } from "@/lib/voice-agent/calls";
+import { sendVoiceBookingNotifications } from "@/lib/voice-agent/notifications";
 import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
@@ -42,6 +43,10 @@ export async function POST(request: NextRequest) {
 
     let appointmentId: string | null = existingCall.appointment_id || null;
     let actionPayload: Record<string, unknown> = {};
+    let confirmationSmsStatus = existingCall.confirmation_sms_status || null;
+    let confirmationSmsSentAt = existingCall.confirmation_sms_sent_at || null;
+    let reminderSmsStatus = existingCall.reminder_sms_status || null;
+    let reminderSmsSentAt = existingCall.reminder_sms_sent_at || null;
 
     if (orchestration.action === "book_estimate") {
       const supabase = getSupabase();
@@ -70,6 +75,24 @@ export async function POST(request: NextRequest) {
 
       if (appointmentError) throw appointmentError;
 
+      const notificationInput = {
+        callerName: String(body.fullName || body.full_name || body.contactName || "").trim() || null,
+        callerPhone:
+          existingCall.from_number ||
+          String(body.callbackPhone || body.callback_phone || body.fromNumber || body.from_number || "").trim() ||
+          null,
+        preferredDate,
+        preferredStartTime,
+        serviceCity: String(body.serviceCity || body.service_city || "").trim() || null,
+        projectType: String(body.projectType || body.project_type || "").trim() || null,
+      };
+
+      const smsResults = await sendVoiceBookingNotifications(notificationInput);
+      confirmationSmsStatus = smsResults.customer.ok ? "sent" : smsResults.customer.skipped ? "skipped" : "failed";
+      confirmationSmsSentAt = smsResults.customer.ok ? now : null;
+      reminderSmsStatus = "pending";
+      reminderSmsSentAt = null;
+
       await logVoiceCallActivity({
         leadId: existingCall.lead_id,
         dealId: existingCall.deal_id,
@@ -77,12 +100,15 @@ export async function POST(request: NextRequest) {
         metadata: {
           appointmentId,
           source: "voice_orchestration",
+          smsResults,
         },
       });
 
       actionPayload = {
         appointmentId,
-        confirmationMessage: `Great, I have you down for ${preferredDate} at ${preferredStartTime}. Joseph will see those details shortly.`,
+        confirmationMessage: smsResults.customerMessage,
+        ownerAlertMessage: smsResults.ownerMessage,
+        smsResults,
         twiml: buildSayTwiml(
           `Great, I have you down for ${preferredDate} at ${preferredStartTime}. Joseph will see those details shortly.`
         ),
@@ -132,6 +158,10 @@ export async function POST(request: NextRequest) {
       summary: existingCall.summary,
       orchestrationAction: orchestration.action,
       bookingStatus: orchestration.action === "book_estimate" ? "scheduled" : existingCall.booking_status || null,
+      confirmationSmsStatus,
+      confirmationSmsSentAt,
+      reminderSmsStatus,
+      reminderSmsSentAt,
       transferTargetNumber:
         typeof actionPayload.transferTargetNumber === "string"
           ? (actionPayload.transferTargetNumber as string)
